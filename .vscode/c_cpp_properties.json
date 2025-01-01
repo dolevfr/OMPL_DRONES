@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                // "${workspaceFolder}",                                // For matplotlibcpp.h
+                "/usr/include/python3.10",                           // Path to Python.h
+                "/usr/lib/python3/dist-packages/numpy/core/include", // Path to numpy/arrayobject.h
+                "/usr/local/include/ompl-1.6",                       // OMPL include path
+                "/usr/include/eigen3",                               // Eigen include path
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

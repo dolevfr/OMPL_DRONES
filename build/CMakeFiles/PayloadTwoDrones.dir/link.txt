@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDemo.cpp.o CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.o CMakeFiles/PayloadTwoDrones.dir/src/stateTransition.cpp.o -o PayloadTwoDrones  -lstdc++fs -lompl -lompl_app -lompl_app_base /usr/lib/x86_64-linux-gnu/libpython3.10.so 

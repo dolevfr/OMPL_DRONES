@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDroneDemo.cpp.o CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDronePlanning.cpp.o -o MultiDroneDemo  -lompl -lompl_app -lompl_app_base /usr/lib/x86_64-linux-gnu/libpython3.10.so 

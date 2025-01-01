@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorDemo.cpp.o CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorPlanning.cpp.o -o QuadrotorDemo  -lompl -lompl_app -lompl_app_base /usr/lib/x86_64-linux-gnu/libpython3.10.so 

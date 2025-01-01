@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDemo.cpp.o CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDrones.cpp.o -o PayloadFourDrones  -lompl -lompl_app -lompl_app_base /usr/lib/x86_64-linux-gnu/libpython3.10.so 
