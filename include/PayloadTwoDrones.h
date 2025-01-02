@@ -12,27 +12,14 @@
 #include <pybind11/numpy.h> // For working with numpy arrays
 #include <pybind11/eigen.h> // For Eigen integration
 #include <pybind11/embed.h>
-#include <pybind11/attr.h> // Ensures that pybind11 symbols are properly defined
 #include <experimental/filesystem>
-
-#if defined(_WIN32) || defined(__CYGWIN__)
-    #ifdef BUILDING_DLL
-        #define PAYLOADSYSTEM_API __declspec(dllexport)
-    #else
-        #define PAYLOADSYSTEM_API __declspec(dllimport)
-    #endif
-#else
-    #define PAYLOADSYSTEM_API __attribute__((visibility("default")))
-#endif
-
-
 
 namespace ompl
 {
     namespace app
     {
         /** \brief A class for planning with a payload system suspended by drones */
-        class PAYLOADSYSTEM_API PayloadSystem : public AppBase<AppType::CONTROL>
+        class PayloadSystem : public AppBase<AppType::CONTROL>
         {
         public:
             PayloadSystem();
@@ -105,7 +92,7 @@ namespace ompl
             void setCableLength(double length) { l = length; }
 
             /** \brief Get the position of a payload corner in the local frame */
-            // Eigen::Vector3d getPayloadCorner(unsigned int index) const;
+            Eigen::Vector3d getPayloadCorner(unsigned int index) const;
 
         protected:
             /** \brief Compute the state derivative for the system */
@@ -136,7 +123,7 @@ namespace ompl
             double massInv_ = 1.0 / m_drone;              // Inverse masses for each drone
             double beta_ = 0.1;                // Damping coefficients for each drone
             Eigen::Matrix3d inertia_ = Eigen::Matrix3d::Identity() * 5; // Example: uniform inertia
-            Eigen::Vector2d payloadDimensions = Eigen::Vector2d(50.0, 50.0); // Example: 1m x 0.5m rectangle
+            double payloadDimention = 1.0;            // Dimensions of the payload
             double l = 50;                 // Length of the cables
             double cableStiffness_ = 1e5;              // Stiffness of the cables
 

@@ -19,24 +19,15 @@
 namespace py = pybind11;
 namespace fs = std::experimental::filesystem;
 
-unsigned int ompl::app::PayloadSystem::droneCount_ = 2; // Default number of drones
 
+unsigned int ompl::app::PayloadSystem::droneCount_ = 2; // Initialize the static member
 
 using StepperType = boost::numeric::odeint::runge_kutta_cash_karp54<std::vector<double>>;
 
 ompl::app::PayloadSystem::PayloadSystem()
     : AppBase<AppType::CONTROL>(constructControlSpace(), Motion_3D), iterationNumber_(0)
 {
-    // Set the stepper for the ODE solver
-    odeSolver = std::make_shared<ompl::control::ODEAdaptiveSolver<StepperType>>(
-        si_,
-        [this](const ompl::control::ODESolver::StateType &q, const ompl::control::Control *ctrl, ompl::control::ODESolver::StateType &qdot) {
-            ode(q, ctrl, qdot);
-        },
-        1.0e-2 // Integration step size
-    );
-
-        py::initialize_interpreter();
+    py::initialize_interpreter();
     try
     {
         std::string python_path = (fs::current_path().parent_path() / "src" / "python").string();
@@ -49,30 +40,47 @@ ompl::app::PayloadSystem::PayloadSystem()
         throw;
     }
 
-    std::cout << "Printing from the constructor:\n";
-    auto *compoundSpace = getStateSpace()->as<base::CompoundStateSpace>();
-    for (unsigned int i = 0; i < compoundSpace->getSubspaceCount(); ++i)
+    name_ = "PayloadSystem";
+
+    // Verify the state space structure
+    auto stateSpace = getStateSpace();
+    if (!stateSpace)
     {
-        std::cout << "Subspace " << i << ": Dimension = " << compoundSpace->getSubspace(i)->getDimension() << std::endl;
+        std::cerr << "Error: StateSpace is null!\n";
+        throw ompl::Exception("StateSpace initialization failed.");
     }
 
+    // Print state space structure for debugging
+    std::cout << "StateSpace Subspaces:\n";
+    auto *compoundSpace = stateSpace->as<base::CompoundStateSpace>();
+    for (size_t i = 0; i < compoundSpace->getSubspaceCount(); ++i)
+    {
+        std::cout << "Subspace " << i << ": Dimension = " 
+                  << compoundSpace->getSubspace(i)->getDimension() << "\n";
+    }
 
-    name_ = std::string("PayloadSystem");
+    // Lock the state space
+    compoundSpace->lock();
+
+    // Apply default bounds
     setDefaultBounds();
 
-    si_->setPropagationStepSize(0.01);
+    // Set up the ODE solver
+    odeSolver = std::make_shared<ompl::control::ODEAdaptiveSolver<StepperType>>(
+        si_,
+        [this](const ompl::control::ODESolver::StateType &q, const ompl::control::Control *ctrl, ompl::control::ODESolver::StateType &qdot) {
+            ode(q, ctrl, qdot);
+        },
+        timeStep_
+    );
+
+    si_->setPropagationStepSize(timeStep_);
     si_->setMinMaxControlDuration(1, 10);
 
-    si_->setStatePropagator(control::ODESolver::getStatePropagator(odeSolver,
-        [this](const base::State* state, const control::Control* control, const double duration, base::State* result)
-        {
-            postPropagate(state, control, duration, result);
-        }));
+    si_->setStatePropagator(control::ODESolver::getStatePropagator(odeSolver));
 
-    // Environment and robot meshes
     setEnvironmentMesh("/usr/local/share/ompl/resources/3D/Twistycool_env.dae");
     setRobotMesh("/usr/local/share/ompl/resources/3D/quadrotor.dae");
-    
 }
 
 
@@ -90,129 +98,137 @@ ompl::base::ScopedState<> ompl::app::PayloadSystem::getFullStateFromGeometricCom
     return fullState;
 }
 
-
-const ompl::base::State* ompl::app::PayloadSystem::getGeometricComponentStateInternal(const base::State* state, unsigned int index) const
+std::vector<double> convertOmplToPythonModel(const std::vector<double> &omplState,
+                                             const Eigen::Vector3d &payloadDimensions)
 {
-    const base::CompoundState* compoundState = state->as<base::CompoundState>();
-    return compoundState->components[index * 2];
-}
+    constexpr unsigned int droneCount_ = 2; // Fixed number of drones
+    std::vector<double> pythonModelState;
 
+    // Extract payload position and quaternion
+    Eigen::Vector3d payloadPos(omplState[0], omplState[1], omplState[2]);
+    Eigen::Quaterniond payloadQuat(omplState[3], omplState[4], omplState[5], omplState[6]);
+    payloadQuat.normalize();
 
-ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
-{
-    auto stateSpace = std::make_shared<base::CompoundStateSpace>();
+    // Add payload position and quaternion to Python state
+    pythonModelState.insert(pythonModelState.end(), {payloadPos.x(), payloadPos.y(), payloadPos.z()});
+    pythonModelState.insert(pythonModelState.end(), {payloadQuat.w(), payloadQuat.x(), payloadQuat.y(), payloadQuat.z()});
 
-    // Payload position and orientation
-    stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
+    // Calculate payload endpoints
+    Eigen::Vector3d offset = (payloadDimensions.x() / 2) *
+                             payloadQuat.toRotationMatrix() * Eigen::Vector3d(1, 0, 0);
+    Eigen::Vector3d r1 = payloadPos + offset;
+    Eigen::Vector3d r2 = payloadPos - offset;
 
-    // Drone and cable orientations
+    // Loop over drones to extract positions, quaternions, and compute cable quaternions
+    unsigned int baseIndex = 7; // Start of drone data in OMPL state
+    std::vector<Eigen::Quaterniond> droneQuats(droneCount_);
+    std::vector<Eigen::Quaterniond> cableQuats(droneCount_);
+    std::vector<Eigen::Vector3d> angularVelocities(droneCount_);
+
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 1.0); // Drone
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 1.0); // Cable
-    }
+        unsigned int droneIndex = baseIndex + i * 13;
 
-    // Derivatives for payload, drones, and cables
-    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.3); // Payload derivatives
+        // Extract drone position and quaternion
+        Eigen::Vector3d dronePos(omplState[droneIndex + 0],
+                                 omplState[droneIndex + 1],
+                                 omplState[droneIndex + 2]);
+
+        Eigen::Quaterniond droneQuat(omplState[droneIndex + 3],
+                                     omplState[droneIndex + 4],
+                                     omplState[droneIndex + 5],
+                                     omplState[droneIndex + 6]);
+        droneQuat.normalize();
+
+        // Calculate cable quaternion based on endpoints
+        Eigen::Vector3d cableVec = (i == 0 ? r1 : r2) - dronePos;
+        Eigen::Quaterniond cableQuat(0, cableVec.x(), cableVec.y(), cableVec.z());
+
+        // Extract angular velocity
+        Eigen::Vector3d angularVel(omplState[droneIndex + 10],
+                                   omplState[droneIndex + 11],
+                                   omplState[droneIndex + 12]);
+
+        // Store values
+        droneQuats[i] = droneQuat;
+        cableQuats[i] = cableQuat;
+        angularVelocities[i] = angularVel;
+
+        // Add drone and cable quaternions to Python state
+        pythonModelState.insert(pythonModelState.end(), {droneQuat.w(), droneQuat.x(), droneQuat.y(), droneQuat.z()});
+        pythonModelState.insert(pythonModelState.end(), {cableQuat.w(), cableQuat.x(), cableQuat.y(), cableQuat.z()});
+    }    
+
+    // Helper function for quaternion derivatives
+    auto calculateQuaternionDerivative = [](const Eigen::Quaterniond &quat, const Eigen::Vector3d &angularVel) {
+        Eigen::Matrix4d E;
+        E << -quat.x(), quat.w(), -quat.z(), quat.y(),
+             -quat.y(), quat.z(), quat.w(), -quat.x(),
+             -quat.z(), -quat.y(), quat.x(), quat.w();
+        return 0.5 * E.transpose() * Eigen::Vector4d(angularVel.x(), angularVel.y(), angularVel.z(), 0.0);
+    };
+
+    // Insert payload linear velocity after drone and cable quaternions
+    Eigen::Vector3d payloadLinearVel(omplState[baseIndex + droneCount_ * 13 + 0],
+                                     omplState[baseIndex + droneCount_ * 13 + 1],
+                                     omplState[baseIndex + droneCount_ * 13 + 2]);
+    pythonModelState.insert(pythonModelState.end(), {payloadLinearVel.x(), payloadLinearVel.y(), payloadLinearVel.z()});
+
+    // Base index for payload angular velocities
+    unsigned int payloadAngularVelIndex = baseIndex + droneCount_ * 13 + 3;
+
+    // Payload quaternion derivative
+    Eigen::Vector4d payloadQuatDot = calculateQuaternionDerivative(
+        payloadQuat,
+        Eigen::Vector3d(omplState[payloadAngularVelIndex + 0],
+                        omplState[payloadAngularVelIndex + 1],
+                        omplState[payloadAngularVelIndex + 2]));
+    pythonModelState.insert(pythonModelState.end(), payloadQuatDot.data(), payloadQuatDot.data() + 4);
+
+    // Drone and cable quaternion derivatives
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.3); // Drone derivatives
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.3); // Cable derivatives
+        Eigen::Vector4d droneQuatDot = calculateQuaternionDerivative(droneQuats[i], angularVelocities[i]);
+
+        pythonModelState.insert(pythonModelState.end(), droneQuatDot.data(), droneQuatDot.data() + 4);
+
+        // Linear velocity of the payload
+        Eigen::Vector3d payloadLinearVel(
+            omplState[payloadAngularVelIndex + 0],
+            omplState[payloadAngularVelIndex + 1],
+            omplState[payloadAngularVelIndex + 2]);
+
+        // Angular velocity of the payload
+        Eigen::Vector3d payloadAngularVel(
+            omplState[payloadAngularVelIndex + 3],
+            omplState[payloadAngularVelIndex + 4],
+            omplState[payloadAngularVelIndex + 5]);
+
+        // Distance vector from payload center to r1 or r2
+        Eigen::Vector3d distanceToEndpoint = (i == 0 ? r1 : r2) - payloadPos;
+
+        // Linear velocity of the payload endpoint (r1 or r2)
+        Eigen::Vector3d endpointLinearVel = payloadLinearVel + payloadAngularVel.cross(distanceToEndpoint);
+
+        // Linear velocity of the drone
+        unsigned int droneVelIndex = baseIndex + i * 13 + 7; // Drone velocity starts here
+        Eigen::Vector3d droneLinearVel(
+            omplState[droneVelIndex + 0],
+            omplState[droneVelIndex + 1],
+            omplState[droneVelIndex + 2]);
+
+        // Angular velocity of the cable (difference in linear velocities divided by distance)
+        Eigen::Vector3d cableAngularVel = (droneLinearVel - endpointLinearVel).cross(cableQuats[i].vec());
+
+        // Calculate quaternion derivative for the cable
+        Eigen::Vector4d cableQuatDot = calculateQuaternionDerivative(cableQuats[i], cableAngularVel);
+
+        // Insert the cable quaternion derivative into the Python state
+        pythonModelState.insert(pythonModelState.end(), cableQuatDot.data(), cableQuatDot.data() + 4);
     }
 
-    stateSpace->lock();
-
-    auto *compoundSpace = std::dynamic_pointer_cast<base::CompoundStateSpace>(stateSpace).get();
-    std::cout << "Total subspaces: " << compoundSpace->getSubspaceCount() << std::endl;
-    for (unsigned int i = 0; i < compoundSpace->getSubspaceCount(); ++i)
-    {
-        std::cout << "Subspace " << i << ": " << compoundSpace->getSubspace(i)->getName() << std::endl;
-    }
-
-    return stateSpace;
+    return pythonModelState;
 }
-
-
-
-
-ompl::control::ControlSpacePtr ompl::app::PayloadSystem::constructControlSpace()
-{
-    // Construct a control space with dimensions equal to 4 times the number of drones
-    auto controlSpace = std::make_shared<ompl::control::RealVectorControlSpace>(constructStateSpace(), droneCount_ * 4);
-
-    // Define control bounds
-    ompl::base::RealVectorBounds controlBounds(droneCount_ * 4); // 4 controls per drone
-
-    // Set bounds for each drone
-    for (size_t i = 0; i < droneCount_; ++i)
-    {
-        // Thrust
-        controlBounds.setLow(4 * i, 0);    // Thrust lower bound
-        controlBounds.setHigh(4 * i, 20); // Thrust upper bound
-
-        double maxTorque = 5; // Maximum torque
-
-        // Roll torque
-        controlBounds.setLow(4 * i + 1, -maxTorque); // Roll torque lower bound
-        controlBounds.setHigh(4 * i + 1, maxTorque); // Roll torque upper bound
-
-        // Pitch torque
-        controlBounds.setLow(4 * i + 2, -maxTorque); // Pitch torque lower bound
-        controlBounds.setHigh(4 * i + 2, maxTorque); // Pitch torque upper bound
-
-        // Yaw torque
-        controlBounds.setLow(4 * i + 3, -maxTorque); // Yaw torque lower bound
-        controlBounds.setHigh(4 * i + 3, maxTorque); // Yaw torque upper bound
-    }
-
-    // Apply bounds to the control space
-    controlSpace->as<ompl::control::RealVectorControlSpace>()->setBounds(controlBounds);
-
-    return controlSpace;
-}
-
-
-
-
-void ompl::app::PayloadSystem::setDefaultBounds()
-{
-    base::RealVectorBounds posBounds(3);
-    posBounds.setLow(-200);
-    posBounds.setHigh(500);
-
-    base::RealVectorBounds velBoundsPayload(6);
-    velBoundsPayload.setLow(-1);
-    velBoundsPayload.setHigh(1);
-
-    base::RealVectorBounds velBoundsDroneCable(3);
-    velBoundsDroneCable.setLow(-10.0);
-    velBoundsDroneCable.setHigh(10.0);
-
-    auto *compoundSpace = getStateSpace()->as<base::CompoundStateSpace>();
-
-    // Payload bounds
-    compoundSpace->as<base::SE3StateSpace>(0)->setBounds(posBounds);
-    compoundSpace->getSubspace(5)->as<base::RealVectorStateSpace>()->setBounds(velBoundsPayload);
-
-    // Drone and cable bounds
-    for (unsigned int i = 0; i < droneCount_; ++i)
-    {
-        unsigned int droneDerivativeIndex = 6 + i * 2;
-        unsigned int cableDerivativeIndex = 7 + i * 2;
-
-        compoundSpace->getSubspace(droneDerivativeIndex)
-            ->as<base::RealVectorStateSpace>()->setBounds(velBoundsDroneCable);
-        compoundSpace->getSubspace(cableDerivativeIndex)
-            ->as<base::RealVectorStateSpace>()->setBounds(velBoundsDroneCable);
-    }
-}
-
-
-
-
-
-
-
 
 
 void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q,
@@ -279,6 +295,8 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q,
 }
 
 
+
+
 void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const control::Control* /*control*/, const double /*duration*/, base::State* result)
 {
     const base::CompoundStateSpace* cs = getStateSpace()->as<base::CompoundStateSpace>();
@@ -292,93 +310,112 @@ void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const
     cs->getSubspace(1)->enforceBounds(csState[1]);
 }
 
-// void ompl::app::PayloadSystem::postPropagate(const base::State* state, const control::Control* control, double duration, base::State* result)
-// {
-//     unsigned int payloadIndex = droneCount_ * 2; // SE3 subspace for payload
-
-//     auto *payloadState = result->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(payloadIndex);
-//     if (!payloadState)
-//     {
-//         throw ompl::Exception("Payload state is null or invalid.");
-//     }
-
-//     Eigen::Vector3d payloadPos(payloadState->getX(), payloadState->getY(), payloadState->getZ());
-//     Eigen::Quaterniond payloadRot(
-//         payloadState->rotation().w,
-//         payloadState->rotation().x,
-//         payloadState->rotation().y,
-//         payloadState->rotation().z
-//     );
-
-//     double norm = payloadRot.norm();
-//     if (norm > 1e-3 && norm < 1e3)
-//     {
-//         payloadRot.normalize();
-//     }
-//     else
-//     {
-//         OMPL_ERROR("Payload quaternion norm is invalid: %f. Resetting to identity.", norm);
-//         payloadRot = Eigen::Quaterniond::Identity();
-//     }
-
-//     for (unsigned int i = 0; i < droneCount_; ++i)
-//     {
-//         unsigned int droneIndex = i * 2;
-
-//         auto *droneState = result->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(droneIndex);
-//         if (!droneState)
-//         {
-//             throw ompl::Exception("Drone state is null or invalid.");
-//         }
-
-//         Eigen::Vector3d dronePos(droneState->getX(), droneState->getY(), droneState->getZ());
-//         Eigen::Quaterniond droneRot(
-//             droneState->rotation().w,
-//             droneState->rotation().x,
-//             droneState->rotation().y,
-//             droneState->rotation().z
-//         );
-
-//         norm = droneRot.norm();
-//         if (norm > 1e-3 && norm < 1e3)
-//         {
-//             droneRot.normalize();
-//         }
-//         else
-//         {
-//             OMPL_ERROR("Drone %u quaternion norm is invalid: %f. Resetting to identity.", i, norm);
-//             droneRot = Eigen::Quaterniond::Identity();
-//         }
-
-//         Eigen::Vector3d cornerPos = payloadPos + payloadRot * getPayloadCorner(i);
-//         if (cornerPos.norm() > 1e6 || std::isnan(cornerPos.norm()) || std::isinf(cornerPos.norm()))
-//         {
-//             OMPL_ERROR("Corner position for Drone %u is invalid. Skipping processing.", i);
-//             continue;
-//         }
-
-//         Eigen::Vector3d cableVec = cornerPos - dronePos;
-//         double cableLength = cableVec.norm();
-
-//         if (cableLength > 1e3 || std::isnan(cableLength) || std::isinf(cableLength))
-//         {
-//             OMPL_ERROR("Cable length for Drone %u is invalid: %f. Resetting to default.", i, cableLength);
-//             cableLength = l;
-//             continue;
-//         }
-
-//         OMPL_DEBUG("Drone %u Cable Vector: (%f, %f, %f), Cable Length: %f", 
-//                    i, cableVec.x(), cableVec.y(), cableVec.z(), cableLength);
-
-//         if (std::abs(cableLength - l) > 1e-4)
-//         {
-//             OMPL_WARN("Cable length constraint violated for Drone %u. Expected: %f, Actual: %f", i, l, cableLength);
-//         }
-//     }
-// }
 
 
 
 
+const ompl::base::State* ompl::app::PayloadSystem::getGeometricComponentStateInternal(const base::State* state, unsigned int index) const
+{
+    const base::CompoundState* compoundState = state->as<base::CompoundState>();
+    return compoundState->components[index * 2];
+}
 
 
+ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
+{
+    auto stateSpace = std::make_shared<base::CompoundStateSpace>();
+
+    // Add SE3 state space for the payload (position and orientation)
+    stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
+
+    // Add RealVector state space for the payload's velocity (6 dimensions)
+    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.3);
+
+    for (unsigned int i = 0; i < droneCount_; ++i)
+    {
+        // Add SE3 state space for position and orientation
+        stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
+
+        // Add RealVector state space for velocity (6 dimensions)
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.3);
+    }
+
+    stateSpace->lock();
+
+    return stateSpace;
+}
+
+
+
+ompl::control::ControlSpacePtr ompl::app::PayloadSystem::constructControlSpace()
+{
+    // Construct a control space with dimensions equal to 4 times the number of drones
+    auto controlSpace = std::make_shared<ompl::control::RealVectorControlSpace>(constructStateSpace(), droneCount_ * 4);
+
+    // Define control bounds
+    ompl::base::RealVectorBounds controlBounds(droneCount_ * 4); // 4 controls per drone
+
+    // Set bounds for each drone
+    for (size_t i = 0; i < droneCount_; ++i)
+    {
+        // Thrust
+        controlBounds.setLow(4 * i, 0);    // Thrust lower bound
+        controlBounds.setHigh(4 * i, 20); // Thrust upper bound
+
+        double maxTorque = 5; // Maximum torque
+
+        // Roll torque
+        controlBounds.setLow(4 * i + 1, -maxTorque); // Roll torque lower bound
+        controlBounds.setHigh(4 * i + 1, maxTorque); // Roll torque upper bound
+
+        // Pitch torque
+        controlBounds.setLow(4 * i + 2, -maxTorque); // Pitch torque lower bound
+        controlBounds.setHigh(4 * i + 2, maxTorque); // Pitch torque upper bound
+
+        // Yaw torque
+        controlBounds.setLow(4 * i + 3, -maxTorque); // Yaw torque lower bound
+        controlBounds.setHigh(4 * i + 3, maxTorque); // Yaw torque upper bound
+    }
+
+    // Apply bounds to the control space
+    controlSpace->as<ompl::control::RealVectorControlSpace>()->setBounds(controlBounds);
+
+    return controlSpace;
+}
+
+
+
+
+void ompl::app::PayloadSystem::setDefaultBounds()
+{
+    base::RealVectorBounds velBounds(6);
+    velBounds.setLow(-1);  // Set valid lower bounds
+    velBounds.setHigh(1);  // Set valid upper bounds
+
+    base::RealVectorBounds posBounds(3);
+    posBounds.setLow(-200); // Set lower bounds for position
+    posBounds.setHigh(500); // Set upper bounds for position
+
+    for (unsigned int i = 0; i < droneCount_; ++i)
+    {
+        // Set bounds for SE3 subspace (position)
+        getStateSpace()->as<base::CompoundStateSpace>()
+            ->as<base::SE3StateSpace>(i * 2)
+            ->setBounds(posBounds);
+
+        // Set bounds for RealVector subspace (velocity)
+        getStateSpace()->as<base::CompoundStateSpace>()
+            ->as<base::RealVectorStateSpace>(i * 2 + 1)
+            ->setBounds(velBounds);
+    }
+
+    // Set bounds for payload SE3 subspace (position)
+    getStateSpace()->as<base::CompoundStateSpace>()
+        ->as<base::SE3StateSpace>(droneCount_ * 2)
+        ->setBounds(posBounds);
+
+    // Set bounds for payload RealVector subspace (velocity)
+    getStateSpace()->as<base::CompoundStateSpace>()
+        ->as<base::RealVectorStateSpace>(droneCount_ * 2 + 1)
+        ->setBounds(velBounds);
+}

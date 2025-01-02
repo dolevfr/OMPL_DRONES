@@ -65,8 +65,8 @@ class DronePayloadModel:
             self.x_p, self.y_p, self.z_p,
             self.q_w, self.q_x, self.q_y, self.q_z,
             self.q_d1_w, self.q_d1_x, self.q_d1_y, self.q_d1_z,
-            self.q_d2_w, self.q_d2_x, self.q_d2_y, self.q_d2_z,
             self.q_c1_w, self.q_c1_x, self.q_c1_y, self.q_c1_z,
+            self.q_d2_w, self.q_d2_x, self.q_d2_y, self.q_d2_z, 
             self.q_c2_w, self.q_c2_x, self.q_c2_y, self.q_c2_z
         ])
 
@@ -91,8 +91,8 @@ class DronePayloadModel:
         self.state_derivatives = sp.Matrix([
             self.x_p_dot, self.y_p_dot, self.z_p_dot,
             self.q_w_dot, self.q_x_dot, self.q_y_dot, self.q_z_dot,
-            *self.q_d1_dot, *self.q_d2_dot,
-            *self.q_c1_dot, *self.q_c2_dot
+            *self.q_d1_dot, *self.q_c1_dot,
+            *self.q_d2_dot, *self.q_c2_dot
         ])
 
         # === 4. Calculations ===
