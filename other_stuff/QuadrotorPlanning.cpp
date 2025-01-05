@@ -101,14 +101,6 @@ ompl::base::StateSpacePtr ompl::app::QuadrotorPlanning::constructStateSpace()
     stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), .3);
     stateSpace->lock();
 
-    // Print state space information
-    std::cout << "State space information:\n";
-    for (unsigned int i = 0; i < stateSpace->getSubspaceCount(); ++i)
-    {
-        auto subspace = stateSpace->getSubspace(i);
-        std::cout << "Subspace " << i << ": Dimension = " << subspace->getDimension() << ", Type = " << subspace->getType() << "\n";
-    }
-
     return stateSpace;
 }
 
@@ -124,12 +116,4 @@ void ompl::app::QuadrotorPlanning::setDefaultBounds()
     controlbounds.setLow(0, 5.);
     controlbounds.setHigh(0, 15.);
     getControlSpace()->as<control::RealVectorControlSpace>()->setBounds(controlbounds);
-
-    std::cout << "Subspaces in state space:\n";
-    auto compoundSpace = getStateSpace()->as<base::CompoundStateSpace>();
-    for (unsigned int i = 0; i < compoundSpace->getSubspaceCount(); ++i)
-    {
-        auto subspace = compoundSpace->getSubspace(i);
-        std::cout << "Subspace " << i << ": Dimension = " << subspace->getDimension() << ", Type = " << subspace->getType() << "\n";
-    }
 }

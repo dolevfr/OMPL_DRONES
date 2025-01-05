@@ -63,9 +63,6 @@ CMAKE_BINARY_DIR = /home/dolev/Desktop/Research/OMPL_drones/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/QuadrotorDemo.dir/all
-all: CMakeFiles/MultiDroneDemo.dir/all
-all: CMakeFiles/PayloadFourDrones.dir/all
 all: CMakeFiles/PayloadTwoDrones.dir/all
 .PHONY : all
 
@@ -74,89 +71,8 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/QuadrotorDemo.dir/clean
-clean: CMakeFiles/MultiDroneDemo.dir/clean
-clean: CMakeFiles/PayloadFourDrones.dir/clean
 clean: CMakeFiles/PayloadTwoDrones.dir/clean
 .PHONY : clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/QuadrotorDemo.dir
-
-# All Build rule for target.
-CMakeFiles/QuadrotorDemo.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles --progress-num=11,12,13 "Built target QuadrotorDemo"
-.PHONY : CMakeFiles/QuadrotorDemo.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/QuadrotorDemo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/QuadrotorDemo.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 0
-.PHONY : CMakeFiles/QuadrotorDemo.dir/rule
-
-# Convenience name for target.
-QuadrotorDemo: CMakeFiles/QuadrotorDemo.dir/rule
-.PHONY : QuadrotorDemo
-
-# clean rule for target.
-CMakeFiles/QuadrotorDemo.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/clean
-.PHONY : CMakeFiles/QuadrotorDemo.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/MultiDroneDemo.dir
-
-# All Build rule for target.
-CMakeFiles/MultiDroneDemo.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles --progress-num=1,2,3 "Built target MultiDroneDemo"
-.PHONY : CMakeFiles/MultiDroneDemo.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/MultiDroneDemo.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/MultiDroneDemo.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 0
-.PHONY : CMakeFiles/MultiDroneDemo.dir/rule
-
-# Convenience name for target.
-MultiDroneDemo: CMakeFiles/MultiDroneDemo.dir/rule
-.PHONY : MultiDroneDemo
-
-# clean rule for target.
-CMakeFiles/MultiDroneDemo.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/clean
-.PHONY : CMakeFiles/MultiDroneDemo.dir/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/PayloadFourDrones.dir
-
-# All Build rule for target.
-CMakeFiles/PayloadFourDrones.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles --progress-num=4,5,6 "Built target PayloadFourDrones"
-.PHONY : CMakeFiles/PayloadFourDrones.dir/all
-
-# Build rule for subdir invocation for target.
-CMakeFiles/PayloadFourDrones.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 3
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/PayloadFourDrones.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 0
-.PHONY : CMakeFiles/PayloadFourDrones.dir/rule
-
-# Convenience name for target.
-PayloadFourDrones: CMakeFiles/PayloadFourDrones.dir/rule
-.PHONY : PayloadFourDrones
-
-# clean rule for target.
-CMakeFiles/PayloadFourDrones.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/clean
-.PHONY : CMakeFiles/PayloadFourDrones.dir/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/PayloadTwoDrones.dir
@@ -165,12 +81,12 @@ CMakeFiles/PayloadFourDrones.dir/clean:
 CMakeFiles/PayloadTwoDrones.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles --progress-num=7,8,9,10 "Built target PayloadTwoDrones"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles --progress-num=1,2,3 "Built target PayloadTwoDrones"
 .PHONY : CMakeFiles/PayloadTwoDrones.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/PayloadTwoDrones.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 3
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/PayloadTwoDrones.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles 0
 .PHONY : CMakeFiles/PayloadTwoDrones.dir/rule

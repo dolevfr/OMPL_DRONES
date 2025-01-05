@@ -14,12 +14,13 @@
 #include <pybind11/embed.h>
 #include <experimental/filesystem>
 
+
 namespace ompl
 {
     namespace app
     {
         /** \brief A class for planning with a payload system suspended by drones */
-        class PayloadSystem : public AppBase<AppType::CONTROL>
+        class __attribute__((visibility("default"))) PayloadSystem : public AppBase<AppType::CONTROL>
         {
         public:
             PayloadSystem();
@@ -28,11 +29,22 @@ namespace ompl
 
             pybind11::object droneModel_;
 
+            void setPositionState(base::State* state, double x, double y, double z, unsigned int componentIndex);
+
+            void setQuaternionState(base::State* state, const Eigen::Quaterniond& rotation, unsigned int componentIndex);
+
+            void setLinearVelocityState(base::State* state, double vx, double vy, double vz, unsigned int componentIndex);
+
+            void setQuaternionDerivativeState(base::State* state, const Eigen::Quaterniond& derivative, unsigned int componentIndex);
+
+
             /** \brief Check if self-collision is enabled (not used for payload systems) */
             bool isSelfCollisionEnabled() const override { return false; }
 
             /** \brief Get the number of drones in the system */
-            unsigned int getRobotCount() const override { return droneCount_; }
+            unsigned int getRobotCount() const { return droneCount_; }
+
+            void inferProblemDefinitionBounds() override;
 
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
@@ -79,8 +91,8 @@ namespace ompl
             /** \brief Set the inertia tensor of the payload */
             void setPayloadInertia(const Eigen::Matrix3d& inertia);
 
-            /** \brief Get the dimensions of the payload (a, b) */
-            const Eigen::Vector2d& getPayloadDimensions() const;
+            /** \brief Get the dimension of the payload (a) */
+            double getPayloadDimension() const { return payloadDimension; }
 
             /** \brief Set the dimensions of the payload (a, b) */
             void setPayloadDimensions(const Eigen::Vector2d& dimensions);
@@ -93,6 +105,8 @@ namespace ompl
 
             /** \brief Get the position of a payload corner in the local frame */
             Eigen::Vector3d getPayloadCorner(unsigned int index) const;
+
+            static unsigned int droneCount_; // Default number of drones
 
         protected:
             /** \brief Compute the state derivative for the system */
@@ -113,19 +127,21 @@ namespace ompl
             /** \brief Calculate the tension in a cable */
             double calculateCableTension(const Eigen::Vector3d& cableVec) const;
 
-            static unsigned int droneCount_;          // Number of drones in the system
-            double timeStep_{1e-2};                   // Time step for integration
+            // static unsigned int droneCount_;          // Number of drones in the system
+            double timeStep_{0.1};                   // Time step for integration
 
             unsigned int iterationNumber_; // Track the iteration count
 
-            double m_payload = 10.0;                   // Mass of the payload
+            double m_payload = 5.0;                   // Mass of the payload
             double m_drone = 1.0;                     // Mass of each drone
             double massInv_ = 1.0 / m_drone;              // Inverse masses for each drone
-            double beta_ = 0.1;                // Damping coefficients for each drone
-            Eigen::Matrix3d inertia_ = Eigen::Matrix3d::Identity() * 5; // Example: uniform inertia
-            double payloadDimention = 1.0;            // Dimensions of the payload
+            double beta_ = 0.0;                // Damping coefficients for each drone
+            double rodInertia = 0.1;                  // Inertia of the payload rod
+            double payloadDimension = 60;              // Length of the payload
             double l = 50;                 // Length of the cables
-            double cableStiffness_ = 1e5;              // Stiffness of the cables
+            double cableStiffness_ = 1e6;              // Stiffness of the cables
+
+            // static unsigned int droneCount_; // Number of drones
 
             control::ODESolverPtr odeSolver;          // ODE solver for the system
         };

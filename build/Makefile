@@ -117,45 +117,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named QuadrotorDemo
-
-# Build rule for target.
-QuadrotorDemo: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 QuadrotorDemo
-.PHONY : QuadrotorDemo
-
-# fast build rule for target.
-QuadrotorDemo/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/build
-.PHONY : QuadrotorDemo/fast
-
-#=============================================================================
-# Target rules for targets named MultiDroneDemo
-
-# Build rule for target.
-MultiDroneDemo: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 MultiDroneDemo
-.PHONY : MultiDroneDemo
-
-# fast build rule for target.
-MultiDroneDemo/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/build
-.PHONY : MultiDroneDemo/fast
-
-#=============================================================================
-# Target rules for targets named PayloadFourDrones
-
-# Build rule for target.
-PayloadFourDrones: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 PayloadFourDrones
-.PHONY : PayloadFourDrones
-
-# fast build rule for target.
-PayloadFourDrones/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/build
-.PHONY : PayloadFourDrones/fast
-
-#=============================================================================
 # Target rules for targets named PayloadTwoDrones
 
 # Build rule for target.
@@ -167,150 +128,6 @@ PayloadTwoDrones: cmake_check_build_system
 PayloadTwoDrones/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/build
 .PHONY : PayloadTwoDrones/fast
-
-other_stuff/MultiDroneDemo.o: other_stuff/MultiDroneDemo.cpp.o
-.PHONY : other_stuff/MultiDroneDemo.o
-
-# target to build an object file
-other_stuff/MultiDroneDemo.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDroneDemo.cpp.o
-.PHONY : other_stuff/MultiDroneDemo.cpp.o
-
-other_stuff/MultiDroneDemo.i: other_stuff/MultiDroneDemo.cpp.i
-.PHONY : other_stuff/MultiDroneDemo.i
-
-# target to preprocess a source file
-other_stuff/MultiDroneDemo.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDroneDemo.cpp.i
-.PHONY : other_stuff/MultiDroneDemo.cpp.i
-
-other_stuff/MultiDroneDemo.s: other_stuff/MultiDroneDemo.cpp.s
-.PHONY : other_stuff/MultiDroneDemo.s
-
-# target to generate assembly for a file
-other_stuff/MultiDroneDemo.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDroneDemo.cpp.s
-.PHONY : other_stuff/MultiDroneDemo.cpp.s
-
-other_stuff/MultiDronePlanning.o: other_stuff/MultiDronePlanning.cpp.o
-.PHONY : other_stuff/MultiDronePlanning.o
-
-# target to build an object file
-other_stuff/MultiDronePlanning.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDronePlanning.cpp.o
-.PHONY : other_stuff/MultiDronePlanning.cpp.o
-
-other_stuff/MultiDronePlanning.i: other_stuff/MultiDronePlanning.cpp.i
-.PHONY : other_stuff/MultiDronePlanning.i
-
-# target to preprocess a source file
-other_stuff/MultiDronePlanning.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDronePlanning.cpp.i
-.PHONY : other_stuff/MultiDronePlanning.cpp.i
-
-other_stuff/MultiDronePlanning.s: other_stuff/MultiDronePlanning.cpp.s
-.PHONY : other_stuff/MultiDronePlanning.s
-
-# target to generate assembly for a file
-other_stuff/MultiDronePlanning.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiDroneDemo.dir/build.make CMakeFiles/MultiDroneDemo.dir/other_stuff/MultiDronePlanning.cpp.s
-.PHONY : other_stuff/MultiDronePlanning.cpp.s
-
-other_stuff/PayloadFourDemo.o: other_stuff/PayloadFourDemo.cpp.o
-.PHONY : other_stuff/PayloadFourDemo.o
-
-# target to build an object file
-other_stuff/PayloadFourDemo.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDemo.cpp.o
-.PHONY : other_stuff/PayloadFourDemo.cpp.o
-
-other_stuff/PayloadFourDemo.i: other_stuff/PayloadFourDemo.cpp.i
-.PHONY : other_stuff/PayloadFourDemo.i
-
-# target to preprocess a source file
-other_stuff/PayloadFourDemo.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDemo.cpp.i
-.PHONY : other_stuff/PayloadFourDemo.cpp.i
-
-other_stuff/PayloadFourDemo.s: other_stuff/PayloadFourDemo.cpp.s
-.PHONY : other_stuff/PayloadFourDemo.s
-
-# target to generate assembly for a file
-other_stuff/PayloadFourDemo.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDemo.cpp.s
-.PHONY : other_stuff/PayloadFourDemo.cpp.s
-
-other_stuff/PayloadFourDrones.o: other_stuff/PayloadFourDrones.cpp.o
-.PHONY : other_stuff/PayloadFourDrones.o
-
-# target to build an object file
-other_stuff/PayloadFourDrones.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDrones.cpp.o
-.PHONY : other_stuff/PayloadFourDrones.cpp.o
-
-other_stuff/PayloadFourDrones.i: other_stuff/PayloadFourDrones.cpp.i
-.PHONY : other_stuff/PayloadFourDrones.i
-
-# target to preprocess a source file
-other_stuff/PayloadFourDrones.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDrones.cpp.i
-.PHONY : other_stuff/PayloadFourDrones.cpp.i
-
-other_stuff/PayloadFourDrones.s: other_stuff/PayloadFourDrones.cpp.s
-.PHONY : other_stuff/PayloadFourDrones.s
-
-# target to generate assembly for a file
-other_stuff/PayloadFourDrones.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/other_stuff/PayloadFourDrones.cpp.s
-.PHONY : other_stuff/PayloadFourDrones.cpp.s
-
-other_stuff/QuadrotorDemo.o: other_stuff/QuadrotorDemo.cpp.o
-.PHONY : other_stuff/QuadrotorDemo.o
-
-# target to build an object file
-other_stuff/QuadrotorDemo.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorDemo.cpp.o
-.PHONY : other_stuff/QuadrotorDemo.cpp.o
-
-other_stuff/QuadrotorDemo.i: other_stuff/QuadrotorDemo.cpp.i
-.PHONY : other_stuff/QuadrotorDemo.i
-
-# target to preprocess a source file
-other_stuff/QuadrotorDemo.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorDemo.cpp.i
-.PHONY : other_stuff/QuadrotorDemo.cpp.i
-
-other_stuff/QuadrotorDemo.s: other_stuff/QuadrotorDemo.cpp.s
-.PHONY : other_stuff/QuadrotorDemo.s
-
-# target to generate assembly for a file
-other_stuff/QuadrotorDemo.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorDemo.cpp.s
-.PHONY : other_stuff/QuadrotorDemo.cpp.s
-
-other_stuff/QuadrotorPlanning.o: other_stuff/QuadrotorPlanning.cpp.o
-.PHONY : other_stuff/QuadrotorPlanning.o
-
-# target to build an object file
-other_stuff/QuadrotorPlanning.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorPlanning.cpp.o
-.PHONY : other_stuff/QuadrotorPlanning.cpp.o
-
-other_stuff/QuadrotorPlanning.i: other_stuff/QuadrotorPlanning.cpp.i
-.PHONY : other_stuff/QuadrotorPlanning.i
-
-# target to preprocess a source file
-other_stuff/QuadrotorPlanning.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorPlanning.cpp.i
-.PHONY : other_stuff/QuadrotorPlanning.cpp.i
-
-other_stuff/QuadrotorPlanning.s: other_stuff/QuadrotorPlanning.cpp.s
-.PHONY : other_stuff/QuadrotorPlanning.s
-
-# target to generate assembly for a file
-other_stuff/QuadrotorPlanning.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/QuadrotorDemo.dir/build.make CMakeFiles/QuadrotorDemo.dir/other_stuff/QuadrotorPlanning.cpp.s
-.PHONY : other_stuff/QuadrotorPlanning.cpp.s
 
 src/PayloadTwoDemo.o: src/PayloadTwoDemo.cpp.o
 .PHONY : src/PayloadTwoDemo.o
@@ -360,30 +177,6 @@ src/PayloadTwoDrones.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.s
 .PHONY : src/PayloadTwoDrones.cpp.s
 
-src/stateTransition.o: src/stateTransition.cpp.o
-.PHONY : src/stateTransition.o
-
-# target to build an object file
-src/stateTransition.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/stateTransition.cpp.o
-.PHONY : src/stateTransition.cpp.o
-
-src/stateTransition.i: src/stateTransition.cpp.i
-.PHONY : src/stateTransition.i
-
-# target to preprocess a source file
-src/stateTransition.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/stateTransition.cpp.i
-.PHONY : src/stateTransition.cpp.i
-
-src/stateTransition.s: src/stateTransition.cpp.s
-.PHONY : src/stateTransition.s
-
-# target to generate assembly for a file
-src/stateTransition.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/stateTransition.cpp.s
-.PHONY : src/stateTransition.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -392,37 +185,13 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... MultiDroneDemo"
-	@echo "... PayloadFourDrones"
 	@echo "... PayloadTwoDrones"
-	@echo "... QuadrotorDemo"
-	@echo "... other_stuff/MultiDroneDemo.o"
-	@echo "... other_stuff/MultiDroneDemo.i"
-	@echo "... other_stuff/MultiDroneDemo.s"
-	@echo "... other_stuff/MultiDronePlanning.o"
-	@echo "... other_stuff/MultiDronePlanning.i"
-	@echo "... other_stuff/MultiDronePlanning.s"
-	@echo "... other_stuff/PayloadFourDemo.o"
-	@echo "... other_stuff/PayloadFourDemo.i"
-	@echo "... other_stuff/PayloadFourDemo.s"
-	@echo "... other_stuff/PayloadFourDrones.o"
-	@echo "... other_stuff/PayloadFourDrones.i"
-	@echo "... other_stuff/PayloadFourDrones.s"
-	@echo "... other_stuff/QuadrotorDemo.o"
-	@echo "... other_stuff/QuadrotorDemo.i"
-	@echo "... other_stuff/QuadrotorDemo.s"
-	@echo "... other_stuff/QuadrotorPlanning.o"
-	@echo "... other_stuff/QuadrotorPlanning.i"
-	@echo "... other_stuff/QuadrotorPlanning.s"
 	@echo "... src/PayloadTwoDemo.o"
 	@echo "... src/PayloadTwoDemo.i"
 	@echo "... src/PayloadTwoDemo.s"
 	@echo "... src/PayloadTwoDrones.o"
 	@echo "... src/PayloadTwoDrones.i"
 	@echo "... src/PayloadTwoDrones.s"
-	@echo "... src/stateTransition.o"
-	@echo "... src/stateTransition.i"
-	@echo "... src/stateTransition.s"
 .PHONY : help
 
 

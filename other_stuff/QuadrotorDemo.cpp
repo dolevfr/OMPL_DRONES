@@ -52,7 +52,6 @@ void quadrotorSetup(app::QuadrotorPlanning &setup)
 
 void quadrotorDemo(app::QuadrotorPlanning &setup)
 {
-    std::vector<double> coords;
 
     std::cout << "\n\n***** Planning for a " << setup.getName() << " *****\n" << std::endl;
     setup.setPlanner(std::make_shared<control::RRT>(setup.getSpaceInformation()));
