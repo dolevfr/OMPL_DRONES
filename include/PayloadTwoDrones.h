@@ -29,22 +29,14 @@ namespace ompl
 
             pybind11::object droneModel_;
 
-            void setPositionState(base::State* state, double x, double y, double z, unsigned int componentIndex);
-
-            void setQuaternionState(base::State* state, const Eigen::Quaterniond& rotation, unsigned int componentIndex);
-
-            void setLinearVelocityState(base::State* state, double vx, double vy, double vz, unsigned int componentIndex);
-
-            void setQuaternionDerivativeState(base::State* state, const Eigen::Quaterniond& derivative, unsigned int componentIndex);
-
-
             /** \brief Check if self-collision is enabled (not used for payload systems) */
             bool isSelfCollisionEnabled() const override { return false; }
 
             /** \brief Get the number of drones in the system */
             unsigned int getRobotCount() const { return droneCount_; }
 
-            void inferProblemDefinitionBounds() override;
+            /** \brief Segmentation fault otherwise */
+            void inferProblemDefinitionBounds() override {}
 
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }

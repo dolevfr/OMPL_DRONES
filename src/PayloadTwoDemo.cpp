@@ -170,20 +170,130 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         }
 
         std::ostringstream stateLine;
-        stateLine << "Propagated State: ";
-        for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
+
+        // // Payload state (position and quaternion)
+        // const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+        // stateLine << "Payload position = [" 
+        //         << payloadState->getX() << ", " 
+        //         << payloadState->getY() << ", " 
+        //         << payloadState->getZ() << "], ";
+        // stateLine << "Payload quaternion = [" 
+        //         << payloadState->rotation().x << ", "
+        //         << payloadState->rotation().y << ", "
+        //         << payloadState->rotation().z << ", "
+        //         << payloadState->rotation().w << "], ";
+
+        // // Drones and cables (quaternion states)
+        // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+        // {
+        //     const auto *droneQuatState = compoundState->as<ompl::base::SO3StateSpace::StateType>(1 + i * 2);
+        //     stateLine << "Drone " << i << " quaternion = [" 
+        //             << droneQuatState->x << ", "
+        //             << droneQuatState->y << ", "
+        //             << droneQuatState->z << ", "
+        //             << droneQuatState->w << "], ";
+
+        //     const auto *cableQuatState = compoundState->as<ompl::base::SO3StateSpace::StateType>(2 + i * 2);
+        //     stateLine << "Cable " << i << " quaternion = [" 
+        //             << cableQuatState->x << ", "
+        //             << cableQuatState->y << ", "
+        //             << cableQuatState->z << ", "
+        //             << cableQuatState->w << "], ";
+        // }
+
+        // // Payload derivatives (velocity and quaternion derivatives)
+        // const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1 + 2 * setup.getRobotCount());
+        // stateLine << "Payload velocity = [" 
+        //         << payloadVelocity->values[0] << ", "
+        //         << payloadVelocity->values[1] << ", "
+        //         << payloadVelocity->values[2] << "], ";
+
+        // const auto *payloadQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(2 + 2 * setup.getRobotCount());
+        // stateLine << "Payload quaternion derivatives = [" 
+        //         << payloadQuatDeriv->values[0] << ", "
+        //         << payloadQuatDeriv->values[1] << ", "
+        //         << payloadQuatDeriv->values[2] << ", "
+        //         << payloadQuatDeriv->values[3] << "], ";
+
+        // // Drones and cables derivatives (quaternion derivatives)
+        // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+        // {
+        //     const auto *droneQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(3 + 2 * setup.getRobotCount() + i * 2);
+        //     stateLine << "Drone " << i << " quaternion derivatives = [" 
+        //             << droneQuatDeriv->values[0] << ", "
+        //             << droneQuatDeriv->values[1] << ", "
+        //             << droneQuatDeriv->values[2] << ", "
+        //             << droneQuatDeriv->values[3] << "], ";
+
+        //     const auto *cableQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(4 + 2 * setup.getRobotCount() + i * 2);
+        //     stateLine << "Cable " << i << " quaternion derivatives = [" 
+        //             << cableQuatDeriv->values[0] << ", "
+        //             << cableQuatDeriv->values[1] << ", "
+        //             << cableQuatDeriv->values[2] << ", "
+        //             << cableQuatDeriv->values[3] << "], ";
+        // }
+
+        // std::cout << stateLine.str() << "\n";
+
+        // Payload state (position and quaternion)
+        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+        stateLine << payloadState->getX() << " " 
+                << payloadState->getY() << " " 
+                << payloadState->getZ() << " "
+                << payloadState->rotation().x << " "
+                << payloadState->rotation().y << " "
+                << payloadState->rotation().z << " "
+                << payloadState->rotation().w << " ";
+
+        // Drones and cables (quaternion states)
+        for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
         {
-            const auto *droneState = compoundState->as<ompl::base::SE3StateSpace::StateType>(d * 2);
-            stateLine << droneState->getX() << " " << droneState->getY() << " " << droneState->getZ() << " ";
+            const auto *droneQuatState = compoundState->as<ompl::base::SO3StateSpace::StateType>(1 + i * 2);
+            stateLine << droneQuatState->x << " "
+                    << droneQuatState->y << " "
+                    << droneQuatState->z << " "
+                    << droneQuatState->w << " ";
+
+            const auto *cableQuatState = compoundState->as<ompl::base::SO3StateSpace::StateType>(2 + i * 2);
+            stateLine << cableQuatState->x << " "
+                    << cableQuatState->y << " "
+                    << cableQuatState->z << " "
+                    << cableQuatState->w << " ";
         }
 
-        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(setup.getRobotCount() * 2);
-        stateLine << payloadState->getX() << " " << payloadState->getY() << " " << payloadState->getZ() << " ";
+        // Payload derivatives (velocity and quaternion derivatives)
+        const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1 + 2 * setup.getRobotCount());
+        stateLine << payloadVelocity->values[0] << " "
+                << payloadVelocity->values[1] << " "
+                << payloadVelocity->values[2] << " ";
 
+        const auto *payloadQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(2 + 2 * setup.getRobotCount());
+        stateLine << payloadQuatDeriv->values[0] << " "
+                << payloadQuatDeriv->values[1] << " "
+                << payloadQuatDeriv->values[2] << " "
+                << payloadQuatDeriv->values[3] << " ";
+
+        // Drones and cables derivatives (quaternion derivatives)
+        for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+        {
+            const auto *droneQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(3 + 2 * setup.getRobotCount() + i * 2);
+            stateLine << droneQuatDeriv->values[0] << " "
+                    << droneQuatDeriv->values[1] << " "
+                    << droneQuatDeriv->values[2] << " "
+                    << droneQuatDeriv->values[3] << " ";
+
+            const auto *cableQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(4 + 2 * setup.getRobotCount() + i * 2);
+            stateLine << cableQuatDeriv->values[0] << " "
+                    << cableQuatDeriv->values[1] << " "
+                    << cableQuatDeriv->values[2] << " "
+                    << cableQuatDeriv->values[3] << " ";
+        }
+
+        // Write to the file
         outFile << stateLine.str() << "\n";
-        std::cout << stateLine.str() << "\n";
-        outFile.flush();
+        outFile.flush(); // Ensure the data is written immediately
     });
+
 
     // Solve the planning problem
     auto terminationCondition = ompl::base::timedPlannerTerminationCondition(3.0); // 3 seconds
