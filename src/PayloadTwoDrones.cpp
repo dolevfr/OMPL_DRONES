@@ -108,12 +108,13 @@ ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
     auto stateSpace = std::make_shared<ompl::base::CompoundStateSpace>();
 
     // Payload position and quaternion
-    stateSpace->addSubspace(std::make_shared<ompl::base::SE3StateSpace>(), 1.0);  // Position and orientation
+    stateSpace->addSubspace(std::make_shared<ompl::base::RealVectorStateSpace>(3), 1.0); // Position
+    stateSpace->addSubspace(std::make_shared<ompl::base::RealVectorStateSpace>(4), 1.0); // Quaternion
 
     // Drones and cables (quaternions only)
     for (unsigned int i = 0; i < droneCount_; ++i) {
-        stateSpace->addSubspace(std::make_shared<ompl::base::SO3StateSpace>(), 1.0);  // Drone i quaternion
-        stateSpace->addSubspace(std::make_shared<ompl::base::SO3StateSpace>(), 1.0);  // Cable i quaternion
+        stateSpace->addSubspace(std::make_shared<ompl::base::RealVectorStateSpace>(4), 1.0);  // Drone i quaternion
+        stateSpace->addSubspace(std::make_shared<ompl::base::RealVectorStateSpace>(4), 1.0);  // Cable i quaternion
     }
 
     // Payload velocities
@@ -172,14 +173,13 @@ ompl::control::ControlSpacePtr ompl::app::PayloadSystem::constructControlSpace()
 
 void ompl::app::PayloadSystem::setDefaultBounds()
 {
-    std::cout << "Setting default bounds for PayloadSystem (velocities and quaternion derivatives)." << std::endl;
+    std::cout << "Setting default bounds for PayloadSystem." << std::endl;
 
-    // Bounds for payload velocities (3 dimensions)
+    // Define bounds
     base::RealVectorBounds velBounds(3);
     velBounds.setLow(-1);
     velBounds.setHigh(1);
 
-    // Bounds for quaternion derivatives (4 dimensions)
     base::RealVectorBounds quatDerivBounds(4);
     quatDerivBounds.setLow(-10);
     quatDerivBounds.setHigh(10);
@@ -192,44 +192,29 @@ void ompl::app::PayloadSystem::setDefaultBounds()
         return;
     }
 
-    unsigned int index = 0;
+    unsigned int index = 1 + 2 * droneCount_; // Skip payload position and drone orientations
 
     try
     {
-        // Skip payload position (SE3StateSpace): no bounds set for position and orientation
-        index++; 
+        compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(velBounds);   // Payload velocity
+        compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds); // Payload quaternion derivatives
 
-        // Skip drone and cable orientations (SO3StateSpace)
+        // Set bounds for drones and cables quaternion derivatives
         for (unsigned int i = 0; i < droneCount_; ++i)
         {
-            index++; // Drone quaternion
-            index++; // Cable quaternion
+            compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds); // Drone quaternion derivative
+            compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds); // Cable quaternion derivative
         }
 
-        // Set bounds for payload velocity
-        compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(velBounds);
-
-        // Set bounds for payload quaternion derivatives
-        compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds);
-
-        // Set bounds for drone and cable quaternion derivatives
-        for (unsigned int i = 0; i < droneCount_; ++i)
-        {
-            compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds); // Drone deriv
-            compoundSpace->getSubspace(index++)->as<base::RealVectorStateSpace>()->setBounds(quatDerivBounds); // Cable deriv
-        }
-
-        std::cout << "Bounds applied successfully to velocities and quaternion derivatives." << std::endl;
-    }
-    catch (const ompl::Exception &e)
-    {
-        std::cerr << "OMPL Exception: " << e.what() << std::endl;
+        std::cout << "Bounds applied successfully." << std::endl;
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Standard Exception: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 }
+
+
 
 
 
@@ -243,15 +228,19 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q,
     // Extract control inputs
     const double *u = ctrl->as<control::RealVectorControlSpace::ControlType>()->values;
 
-    // Debugging: Enforce thrust magnitude of exactly 10
+    // Debugging: Enforce thrust magnitude of exactly 10 and set other controls to 0
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
         // Ensure the thrust control (u[i * 4]) is set to 10
         double& thrustControl = const_cast<double&>(ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values[i * 4]);
         thrustControl = 10.0;
 
-        // Optionally, print the adjusted thrust for debugging
-        // std::cout << "Drone " << i << " thrust set to: " << thrustControl << std::endl;
+        // Set roll, pitch, and yaw torques to 0
+        for (unsigned int j = 1; j < 4; ++j)
+        {
+            double& torqueControl = const_cast<double&>(ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values[i * 4 + j]);
+            torqueControl = 0.0;
+        }
     }
 
 
@@ -279,152 +268,38 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q,
     // Solve A * q_ddot = B for q_ddot
     Eigen::VectorXd second_derivatives = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B);
 
-    // Populate position derivatives (velocity)
-    qdot[0] = x_k[23]; // x velocity
-    qdot[1] = x_k[24]; // y velocity
-    qdot[2] = x_k[25]; // z velocity
+    // Populate qdot: first half with the second half of x_k, and second half with second_derivatives
+    unsigned int state_size = x_k.size() / 2;
 
-    // Populate position second derivatives (acceleration)
-    qdot[23] = second_derivatives[0]; // x acceleration
-    qdot[24] = second_derivatives[1]; // y acceleration
-    qdot[25] = second_derivatives[2]; // z acceleration
-
-    // Handle quaternion derivatives and second derivatives
-    for (int i = 0; i < 20; i += 4) { // Loop over payload, drones, and cables
-        // Extract current quaternion and its derivative
-        Eigen::Vector4d q_current = x_k.segment<4>(3 + i);         // Current quaternion
-        Eigen::Vector4d q_dot_current = x_k.segment<4>(10 + 8 * droneCount_ + i);    // Quaternion derivative
-        Eigen::Vector4d q_ddot = second_derivatives.segment<4>(3 + i); // Quaternion second derivative
-
-        // Update quaternion derivative
-        Eigen::Vector4d q_dot_new = q_dot_current + q_ddot;
-
-        // Populate qdot with updated quaternion derivatives
-        qdot[3 + i] = q_dot_new[0];
-        qdot[4 + i] = q_dot_new[1];
-        qdot[5 + i] = q_dot_new[2];
-        qdot[6 + i] = q_dot_new[3];
+    for (unsigned int i = 0; i < state_size; ++i)
+    {
+        qdot[i] = x_k[state_size + i];         // First half of qdot: velocities or quaternion derivatives
+        qdot[state_size + i] = second_derivatives[i]; // Second half of qdot: accelerations or quaternion second derivatives
     }
+
 }
 
 void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const control::Control* /*control*/, const double /*duration*/, base::State* result)
 {
-    const auto* compoundStateSpace = getStateSpace()->as<base::CompoundStateSpace>();
-    if (!compoundStateSpace)
-    {
-        std::cerr << "Error: CompoundStateSpace is null.\n";
-        return;
-    }
+    auto *cs = getStateSpace()->as<base::CompoundStateSpace>();
+    auto &csState = *result->as<base::CompoundStateSpace::StateType>();
 
-    auto* compoundState = result->as<base::CompoundState>();
-    if (!compoundState)
-    {
-        std::cerr << "Error: CompoundState is null.\n";
-        return;
-    }
+    // Normalize payload quaternion
+    double *payloadQuat = cs->getSubspace(1)->as<base::RealVectorStateSpace>()->getValueAddressAtIndex(&csState, 0);
+    Eigen::Map<Eigen::Vector4d>(payloadQuat).normalize();
 
-    // Normalize the payload quaternion
-    auto* payloadSE3State = compoundState->as<base::SE3StateSpace::StateType>(0);
-    if (!payloadSE3State)
-    {
-        std::cerr << "Error: Payload SE3StateSpace is null.\n";
-        return;
-    }
-    Eigen::Quaterniond payloadRot(
-        payloadSE3State->rotation().w,
-        payloadSE3State->rotation().x,
-        payloadSE3State->rotation().y,
-        payloadSE3State->rotation().z
-    );
-    payloadRot.normalize();
-    payloadSE3State->rotation().w = payloadRot.w();
-    payloadSE3State->rotation().x = payloadRot.x();
-    payloadSE3State->rotation().y = payloadRot.y();
-    payloadSE3State->rotation().z = payloadRot.z();
+    unsigned int index = 2; // Start after payload position and quaternion
 
-    // Enforce bounds on payload velocity
-    auto* payloadVelocity = compoundState->as<base::RealVectorStateSpace::StateType>(1 + 2 * droneCount_);
-    if (!payloadVelocity)
-    {
-        std::cerr << "Error: Payload velocity state is null.\n";
-        return;
-    }
-    compoundStateSpace->getSubspace(1 + 2 * droneCount_)->enforceBounds(payloadVelocity);
-
-    // Enforce bounds on payload quaternion derivatives
-    auto* payloadQuatDeriv = compoundState->as<base::RealVectorStateSpace::StateType>(2 + 2 * droneCount_);
-    if (!payloadQuatDeriv)
-    {
-        std::cerr << "Error: Payload quaternion derivative state is null.\n";
-        return;
-    }
-    compoundStateSpace->getSubspace(2 + 2 * droneCount_)->enforceBounds(payloadQuatDeriv);
-
-    // Loop through drones and cables
+    // Normalize drone and cable quaternions
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
-        // Normalize drone quaternion
-        auto* droneSO3State = compoundState->as<base::SO3StateSpace::StateType>(1 + i * 2);
-        if (!droneSO3State)
-        {
-            std::cerr << "Error: Drone quaternion state is null at index " << i << ".\n";
-            return;
-        }
-        Eigen::Quaterniond droneRot(
-            droneSO3State->w,
-            droneSO3State->x,
-            droneSO3State->y,
-            droneSO3State->z
-        );
-        droneRot.normalize();
-        droneSO3State->w = droneRot.w();
-        droneSO3State->x = droneRot.x();
-        droneSO3State->y = droneRot.y();
-        droneSO3State->z = droneRot.z();
+        double *droneQuat = cs->getSubspace(index++)->as<base::RealVectorStateSpace>()->getValueAddressAtIndex(&csState, 0);
+        Eigen::Map<Eigen::Vector4d>(droneQuat).normalize();
 
-        // Normalize cable quaternion
-        auto* cableSO3State = compoundState->as<base::SO3StateSpace::StateType>(2 + i * 2);
-        if (!cableSO3State)
-        {
-            std::cerr << "Error: Cable quaternion state is null at index " << i << ".\n";
-            return;
-        }
-        Eigen::Quaterniond cableRot(
-            cableSO3State->w,
-            cableSO3State->x,
-            cableSO3State->y,
-            cableSO3State->z
-        );
-        cableRot.normalize();
-        cableSO3State->w = cableRot.w();
-        cableSO3State->x = cableRot.x();
-        cableSO3State->y = cableRot.y();
-        cableSO3State->z = cableRot.z();
-
-        // Enforce bounds on drone quaternion derivatives
-        auto* droneQuatDeriv = compoundState->as<base::RealVectorStateSpace::StateType>(3 + 2 * droneCount_ + i * 2);
-        if (!droneQuatDeriv)
-        {
-            std::cerr << "Error: Drone quaternion derivative state is null at index " << i << ".\n";
-            return;
-        }
-        compoundStateSpace->getSubspace(3 + 2 * droneCount_ + i * 2)->enforceBounds(droneQuatDeriv);
-
-        // Enforce bounds on cable quaternion derivatives
-        auto* cableQuatDeriv = compoundState->as<base::RealVectorStateSpace::StateType>(4 + 2 * droneCount_ + i * 2);
-        if (!cableQuatDeriv)
-        {
-            std::cerr << "Error: Cable quaternion derivative state is null at index " << i << ".\n";
-            return;
-        }
-        compoundStateSpace->getSubspace(4 + 2 * droneCount_ + i * 2)->enforceBounds(cableQuatDeriv);
+        double *cableQuat = cs->getSubspace(index++)->as<base::RealVectorStateSpace>()->getValueAddressAtIndex(&csState, 0);
+        Eigen::Map<Eigen::Vector4d>(cableQuat).normalize();
     }
 }
-
-
-
-
-
 
 
 const ompl::base::State *ompl::app::PayloadSystem::getGeometricComponentStateInternal(const ompl::base::State *state, unsigned int index) const
