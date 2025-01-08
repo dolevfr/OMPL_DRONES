@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/Test3DSystem.dir/src/test.cpp.o CMakeFiles/Test3DSystem.dir/src/stateTransition.cpp.o -o Test3DSystem  /usr/lib/x86_64-linux-gnu/libpython3.10.so -lstdc++fs 
