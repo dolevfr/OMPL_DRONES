@@ -38,6 +38,15 @@ namespace ompl
             /** \brief Segmentation fault otherwise */
             void inferProblemDefinitionBounds() override {}
 
+            // void inferEnvironmentBounds() override
+            // {
+            //     base::RealVectorBounds bounds(3); // Example bounds
+            //     bounds.setLow(-300);
+            //     bounds.setHigh(600);
+            //     getStateSpace()->as<base::CompoundStateSpace>()->getSubspace(0)->as<base::RealVectorStateSpace>()->setBounds(bounds);
+            // }
+
+
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
 

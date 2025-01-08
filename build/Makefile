@@ -129,6 +129,19 @@ PayloadTwoDrones/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/build
 .PHONY : PayloadTwoDrones/fast
 
+#=============================================================================
+# Target rules for targets named Test3DSystem
+
+# Build rule for target.
+Test3DSystem: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 Test3DSystem
+.PHONY : Test3DSystem
+
+# fast build rule for target.
+Test3DSystem/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/build
+.PHONY : Test3DSystem/fast
+
 src/PayloadTwoDemo.o: src/PayloadTwoDemo.cpp.o
 .PHONY : src/PayloadTwoDemo.o
 
@@ -177,6 +190,54 @@ src/PayloadTwoDrones.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.s
 .PHONY : src/PayloadTwoDrones.cpp.s
 
+src/stateTransition.o: src/stateTransition.cpp.o
+.PHONY : src/stateTransition.o
+
+# target to build an object file
+src/stateTransition.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/stateTransition.cpp.o
+.PHONY : src/stateTransition.cpp.o
+
+src/stateTransition.i: src/stateTransition.cpp.i
+.PHONY : src/stateTransition.i
+
+# target to preprocess a source file
+src/stateTransition.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/stateTransition.cpp.i
+.PHONY : src/stateTransition.cpp.i
+
+src/stateTransition.s: src/stateTransition.cpp.s
+.PHONY : src/stateTransition.s
+
+# target to generate assembly for a file
+src/stateTransition.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/stateTransition.cpp.s
+.PHONY : src/stateTransition.cpp.s
+
+src/test.o: src/test.cpp.o
+.PHONY : src/test.o
+
+# target to build an object file
+src/test.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/test.cpp.o
+.PHONY : src/test.cpp.o
+
+src/test.i: src/test.cpp.i
+.PHONY : src/test.i
+
+# target to preprocess a source file
+src/test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/test.cpp.i
+.PHONY : src/test.cpp.i
+
+src/test.s: src/test.cpp.s
+.PHONY : src/test.s
+
+# target to generate assembly for a file
+src/test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Test3DSystem.dir/build.make CMakeFiles/Test3DSystem.dir/src/test.cpp.s
+.PHONY : src/test.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -186,12 +247,19 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... PayloadTwoDrones"
+	@echo "... Test3DSystem"
 	@echo "... src/PayloadTwoDemo.o"
 	@echo "... src/PayloadTwoDemo.i"
 	@echo "... src/PayloadTwoDemo.s"
 	@echo "... src/PayloadTwoDrones.o"
 	@echo "... src/PayloadTwoDrones.i"
 	@echo "... src/PayloadTwoDrones.s"
+	@echo "... src/stateTransition.o"
+	@echo "... src/stateTransition.i"
+	@echo "... src/stateTransition.s"
+	@echo "... src/test.o"
+	@echo "... src/test.i"
+	@echo "... src/test.s"
 .PHONY : help
 
 

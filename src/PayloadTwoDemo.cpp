@@ -24,38 +24,61 @@ using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
+
     auto stateSpace = setup.getStateSpace();
     auto *compoundSpace = stateSpace->as<base::CompoundStateSpace>();
     unsigned int droneCount = setup.getRobotCount();
 
-    // Define bounds for payload position
-    base::RealVectorBounds posBounds(3);
-    posBounds.setLow(-300);
-    posBounds.setHigh(600);
-    compoundSpace->getSubspace(0)->as<base::RealVectorStateSpace>()->setBounds(posBounds);
+    // setup.inferEnvironmentBounds();
+
+    // Set default validity checker to accept all states
+    setup.getSpaceInformation()->setStateValidityChecker([](const ompl::base::State * /*state*/) -> bool {
+        return true;
+    });
+
+    // base::RealVectorBounds bounds(3);
+    // bounds.setLow(-300);
+    // bounds.setHigh(600);
+
+    // // Apply bounds to the payload position (first subspace)
+    // stateSpace->as<ompl::base::CompoundStateSpace>()
+    //         ->getSubspace(0) // First subspace is payload position
+    //         ->as<ompl::base::RealVectorStateSpace>()
+    //         ->setBounds(bounds);
+
+    // Ensure SpaceInformation is fully configured
+    setup.getSpaceInformation()->setup();
 
     // Define start and goal states
     base::ScopedState<base::CompoundStateSpace> startState(stateSpace), goalState(stateSpace);
 
-    // Payload position
-    startState->as<base::RealVectorStateSpace::StateType>(0)->values[0] = 125.0;
-    startState->as<base::RealVectorStateSpace::StateType>(0)->values[1] = 125.0;
-    startState->as<base::RealVectorStateSpace::StateType>(0)->values[2] = -150.0;
+    // Payload position and orientation (SE3StateSpace)
+    auto *payloadStart = startState->as<base::SE3StateSpace::StateType>(0);
+    auto *payloadGoal = goalState->as<base::SE3StateSpace::StateType>(0);
 
-    goalState->as<base::RealVectorStateSpace::StateType>(0)->values[0] = 375.0;
-    goalState->as<base::RealVectorStateSpace::StateType>(0)->values[1] = 375.0;
-    goalState->as<base::RealVectorStateSpace::StateType>(0)->values[2] = -150.0;
+    // Set payload start position
+    payloadStart->setX(125.0);
+    payloadStart->setY(125.0);
+    payloadStart->setZ(-150.0);
+    payloadStart->rotation().setIdentity(); // Quaternion: [0 0 0 1]
 
-    // Set quaternions for payload, drones, and cables to [0 0 0 1]
-    unsigned int index = 1; // Start with the payload quaternion
-    for (unsigned int i = 0; i < 1 + 2 * droneCount; ++i)
+    // Set payload goal position
+    payloadGoal->setX(375.0);
+    payloadGoal->setY(375.0);
+    payloadGoal->setZ(-150.0);
+    payloadGoal->rotation().setIdentity(); // Quaternion: [0 0 0 1]
+
+    unsigned int index = 1; // Start after payload (SE3)
+
+    // Set quaternions for drones and cables to [0 0 0 1]
+    for (unsigned int i = 0; i < 2 * droneCount; ++i)
     {
         auto *quatStart = startState->as<base::RealVectorStateSpace::StateType>(index);
         auto *quatGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
-        quatStart->values[0] = quatGoal->values[0] = 0.0;
+        quatStart->values[0] = quatGoal->values[0] = 1.0;
         quatStart->values[1] = quatGoal->values[1] = 0.0;
         quatStart->values[2] = quatGoal->values[2] = 0.0;
-        quatStart->values[3] = quatGoal->values[3] = 1.0;
+        quatStart->values[3] = quatGoal->values[3] = 0.0;
         ++index;
     }
 
@@ -75,6 +98,7 @@ void payloadSystemSetup(app::PayloadSystem &setup)
             quatDerivStart->values[j] = quatDerivGoal->values[j] = 0.0;
         ++index;
     }
+
 
     // Set the start and goal states
     setup.setStartAndGoalStates(startState, goalState, 0.5);
@@ -138,13 +162,12 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         std::ostringstream stateLine;
 
         // Payload position and quaternion
-        const auto *payloadPos = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(0);
-        const auto *payloadQuat = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
-        stateLine << payloadPos->values[0] << " " << payloadPos->values[1] << " " << payloadPos->values[2] << " ";
-        stateLine << payloadQuat->values[0] << " " << payloadQuat->values[1] << " "
-                << payloadQuat->values[2] << " " << payloadQuat->values[3] << " ";
+        const auto *payloadSE3 = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+        stateLine << payloadSE3->getX() << " " << payloadSE3->getY() << " " << payloadSE3->getZ() << " ";
+        stateLine << payloadSE3->rotation().x << " " << payloadSE3->rotation().y << " "
+                << payloadSE3->rotation().z << " " << payloadSE3->rotation().w << " ";
 
-        unsigned int index = 2;
+        unsigned int index = 1; // Start after payload (SE3)
 
         // Drone and cable quaternions
         for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
@@ -182,13 +205,13 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 
 
 
-    // Solve the planning problem
-    auto terminationCondition = ompl::base::timedPlannerTerminationCondition(3.0); // 3 seconds
-    std::cout << "Solving the problem...\n";
+    // // Solve the planning problem
+    // auto terminationCondition = ompl::base::timedPlannerTerminationCondition(3.0); // 3 seconds
+    // std::cout << "Solving the problem...\n";
 
     try
     {
-        if (setup.solve(terminationCondition))
+        if (setup.solve(1))
         {
             control::PathControl &path(setup.getSolutionPath());
             path.printAsMatrix(std::cout);

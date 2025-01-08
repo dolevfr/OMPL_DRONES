@@ -30,9 +30,9 @@ class DronePayloadModel:
         self.q_d1_w, self.q_d1_x, self.q_d1_y, self.q_d1_z = sp.symbols('q_d1_w q_d1_x q_d1_y q_d1_z', cls=sp.Function)
         self.q_d2_w, self.q_d2_x, self.q_d2_y, self.q_d2_z = sp.symbols('q_d2_w q_d2_x q_d2_y q_d2_z', cls=sp.Function)
 
-        # Cable orientations (quaternions)
-        self.q_c1_w, self.q_c1_x, self.q_c1_y, self.q_c1_z = sp.symbols('q_c1_w q_c1_x q_c1_y q_c1_z', cls=sp.Function)
-        self.q_c2_w, self.q_c2_x, self.q_c2_y, self.q_c2_z = sp.symbols('q_c2_w q_c2_x q_c2_y q_c2_z', cls=sp.Function)
+        # Cable angles
+        self.theta_c1, self.theta_c2 = sp.symbols('t_c1 t_c2', cls=sp.Function)
+        self.phi_c1, self.phi_c2 = sp.symbols('phi_c1 phi_c2', cls=sp.Function)
 
         # Control inputs (thrust and torques)
         self.T_d1, self.T_d2 = sp.symbols('T_d1 T_d2', cls=sp.Function)
@@ -52,8 +52,8 @@ class DronePayloadModel:
         self.q_d2_w, self.q_d2_x, self.q_d2_y, self.q_d2_z = self.q_d2_w(t), self.q_d2_x(t), self.q_d2_y(t), self.q_d2_z(t)
 
         # Time-dependent variables for cables
-        self.q_c1_w, self.q_c1_x, self.q_c1_y, self.q_c1_z = self.q_c1_w(t), self.q_c1_x(t), self.q_c1_y(t), self.q_c1_z(t)
-        self.q_c2_w, self.q_c2_x, self.q_c2_y, self.q_c2_z = self.q_c2_w(t), self.q_c2_x(t), self.q_c2_y(t), self.q_c2_z(t)
+        self.theta_c1, self.theta_c2 = self.theta_c1(t), self.theta_c2(t)
+        self.phi_c1, self.phi_c2 = self.phi_c1(t), self.phi_c2(t)
 
         # Control inputs are also time-dependent
         self.T_d1, self.T_d2 = self.T_d1(t), self.T_d2(t)
@@ -65,9 +65,9 @@ class DronePayloadModel:
             self.x_p, self.y_p, self.z_p,
             self.q_w, self.q_x, self.q_y, self.q_z,
             self.q_d1_w, self.q_d1_x, self.q_d1_y, self.q_d1_z,
-            self.q_c1_w, self.q_c1_x, self.q_c1_y, self.q_c1_z,
+            self.theta_c1, self.phi_c1,
             self.q_d2_w, self.q_d2_x, self.q_d2_y, self.q_d2_z, 
-            self.q_c2_w, self.q_c2_x, self.q_c2_y, self.q_c2_z
+            self.theta_c2, self.phi_c2
         ])
 
         # === 3. Derivatives ===
@@ -83,16 +83,18 @@ class DronePayloadModel:
         self.q_d1_dot = sp.Matrix([sp.diff(self.q_d1_w, t), sp.diff(self.q_d1_x, t), sp.diff(self.q_d1_y, t), sp.diff(self.q_d1_z, t)])
         self.q_d2_dot = sp.Matrix([sp.diff(self.q_d2_w, t), sp.diff(self.q_d2_x, t), sp.diff(self.q_d2_y, t), sp.diff(self.q_d2_z, t)])
 
-        # Derivatives for cable quaternions
-        self.q_c1_dot = sp.Matrix([sp.diff(self.q_c1_w, t), sp.diff(self.q_c1_x, t), sp.diff(self.q_c1_y, t), sp.diff(self.q_c1_z, t)])
-        self.q_c2_dot = sp.Matrix([sp.diff(self.q_c2_w, t), sp.diff(self.q_c2_x, t), sp.diff(self.q_c2_y, t), sp.diff(self.q_c2_z, t)])
+        # Derivatives for cable angles
+        self.theta_c1_dot, self.phi_c1_dot = sp.diff(self.theta_c1, t), sp.diff(self.phi_c1, t)
+        self.theta_c2_dot, self.phi_c2_dot = sp.diff(self.theta_c2, t), sp.diff(self.phi_c2, t)
 
         # Vector of all state derivatives
         self.state_derivatives = sp.Matrix([
             self.x_p_dot, self.y_p_dot, self.z_p_dot,
             self.q_w_dot, self.q_x_dot, self.q_y_dot, self.q_z_dot,
-            *self.q_d1_dot, *self.q_c1_dot,
-            *self.q_d2_dot, *self.q_c2_dot
+            self.q_d1_dot[0], self.q_d1_dot[1], self.q_d1_dot[2], self.q_d1_dot[3],
+            self.theta_c1_dot, self.phi_c1_dot,
+            self.q_d2_dot[0], self.q_d2_dot[1], self.q_d2_dot[2], self.q_d2_dot[3],
+            self.theta_c2_dot, self.phi_c2_dot
         ])
 
         # === 4. Calculations ===
@@ -110,8 +112,8 @@ class DronePayloadModel:
         self.r2 = self.payload_pos - (self.a / 2) * self._rotate_vector([1, 0, 0], self.payload_orientation)
 
         # Drone positions with respect to cable orientations
-        self.drone1_pos = self.r1 - self.l * self._rotate_vector([0, 0, 1], sp.Matrix([self.q_c1_w, self.q_c1_x, self.q_c1_y, self.q_c1_z]))
-        self.drone2_pos = self.r2 - self.l * self._rotate_vector([0, 0, 1], sp.Matrix([self.q_c2_w, self.q_c2_x, self.q_c2_y, self.q_c2_z]))
+        self.drone1_pos = self.r1 + self.l * (sp.Matrix([sp.sin(self.theta_c1) * sp.cos(self.phi_c1), sp.sin(self.theta_c1) * sp.sin(self.phi_c1), sp.cos(self.theta_c1)]))
+        self.drone2_pos = self.r2 + self.l * (sp.Matrix([sp.sin(self.theta_c2) * sp.cos(self.phi_c2), sp.sin(self.theta_c2) * sp.sin(self.phi_c2), sp.cos(self.theta_c2)]))
 
         # Drone orientations
         self.drone1_orientation = sp.Matrix([self.q_d1_w, self.q_d1_x, self.q_d1_y, self.q_d1_z])
@@ -126,8 +128,8 @@ class DronePayloadModel:
         self.drone2_angular_vel = self.quaternion_angular_velocity(self.drone2_orientation, self.q_d2_dot)
 
 
-
-    def _rotate_vector(self, vec, quaternion):
+    @staticmethod
+    def _rotate_vector(vec, quaternion):
         """Rotate a vector using a quaternion."""
         vec = sp.Matrix(vec)
         q_w, q_x, q_y, q_z = quaternion

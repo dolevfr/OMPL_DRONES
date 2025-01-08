@@ -27,55 +27,14 @@ Eigen::VectorXd state_transition(const Eigen::VectorXd &x_k,
     // Compute least-squares solution for accelerations (second derivatives)
     Eigen::VectorXd second_derivatives = A.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV).solve(B);
 
-    // Extract second derivatives for positions and quaternions
-    Eigen::Vector3d pos_ddot = second_derivatives.segment<3>(0); // x_p_ddot, y_p_ddot, z_p_ddot
-    Eigen::VectorXd quaternions_ddot = second_derivatives.segment(3, 20); // Second derivatives of quaternions
-
-    std::cout << "pos_ddot: " << pos_ddot.transpose() << std::endl;
-
-    // Extract current velocities from x_k
-    Eigen::Vector3d pos_dot = x_k.segment<3>(23); // x_p_dot, y_p_dot, z_p_dot
-    Eigen::VectorXd quaternions_dot = x_k.segment(26, 20); // Derivatives of quaternions
-
-    std::cout << "pos_dot: " << pos_dot.transpose() << std::endl;
-
-
-    // Update linear velocities
-    Eigen::Vector3d pos_dot_new = pos_dot + pos_ddot * dt;
-
-    // Update linear positions
-    Eigen::Vector3d pos_new = x_k.segment<3>(0) + pos_dot_new * dt;
-
-    // Update quaternions and their derivatives for all components
-    Eigen::VectorXd quaternions_new(20);
-    Eigen::VectorXd quaternions_dot_new(20);
-    for (int i = 0; i < 20; i += 4) { // Update each quaternion (payload, drones, cables)
-        // Extract current quaternion and its derivative
-        Eigen::Vector4d q_current = x_k.segment<4>(3 + i);         // Current quaternion
-        Eigen::Vector4d q_dot_current = quaternions_dot.segment<4>(i); // Current quaternion derivative
-        Eigen::Vector4d q_ddot = quaternions_ddot.segment<4>(i);   // Second derivative of quaternion
-
-        // Update quaternion derivative
-        Eigen::Vector4d q_dot_new = q_dot_current + q_ddot * dt;
-
-        // Update quaternion
-        Eigen::Vector4d q_new = q_current + q_dot_new * dt;
-
-        // Normalize quaternion to ensure it remains a valid unit quaternion
-        Eigen::Quaterniond q_updated(q_new(0), q_new(1), q_new(2), q_new(3));
-        q_updated.normalize();
-
-        // Store updated quaternion and derivative
-        quaternions_new.segment<4>(i) = q_updated.coeffs(); // Updated quaternion
-        quaternions_dot_new.segment<4>(i) = q_dot_new;      // Updated quaternion derivative
-    }
-
-    // Construct the new state vector
+    // Update the new state vector
     Eigen::VectorXd new_state(x_k.size());
-    new_state.segment<3>(0) = pos_new;                       // Updated position
-    new_state.segment(3, 20) = quaternions_new;              // Updated quaternions
-    new_state.segment<3>(23) = pos_dot_new;                  // Updated linear velocity
-    new_state.segment(26, 20) = quaternions_dot_new;         // Updated quaternion derivatives
+
+    // First half: Positions updated with velocities
+    new_state.head(x_k.size() / 2) = x_k.head(x_k.size() / 2) + x_k.tail(x_k.size() / 2) * dt;
+
+    // Second half: Velocities updated with accelerations (second derivatives)
+    new_state.tail(x_k.size() / 2) = x_k.tail(x_k.size() / 2) + second_derivatives * dt;
 
     return new_state;
 }
