@@ -23,9 +23,9 @@ int main() {
         // Define the state vector (x_k)
         Eigen::VectorXd x_k(38);  // Updated state vector: payload + drones + cables + derivatives
         x_k << 0.0, 0.0, 0.0,  // Payload position (x_p, y_p, z_p)
-               1.0, 0.0, 0.0, 0.0,  // Payload orientation quaternion (q_w, q_x, q_y, q_z)
-               1.0, 0.0, 0.0, 0.0,  // Drone 1 quaternion (q_d1_w, q_d1_x, q_d1_y, q_d1_z)
-               1.0, 0.0, 0.0, 0.0,  // Drone 2 quaternion (q_d2_w, q_d2_x, q_d2_y, q_d2_z)
+               0.0, 0.0, 0.0, 1.0,  // Payload orientation quaternion (q_w, q_x, q_y, q_z)
+               0.0, 0.0, 0.0, 1.0,  // Drone 1 quaternion (q_d1_w, q_d1_x, q_d1_y, q_d1_z)
+               0.0, 0.0, 0.0, 1.0,  // Drone 2 quaternion (q_d2_w, q_d2_x, q_d2_y, q_d2_z)
                0.0, 0.0, // Cable 1 angles (theta_c1, phi_c1)
                0.0, 0.0, // Cable 2 angles (theta_c2, phi_c2)
                0.0, 0.0, 10.0,  // Payload position derivatives (dx_p, dy_p, dz_p)

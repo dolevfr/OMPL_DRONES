@@ -78,6 +78,21 @@ void ompl::app::QuadrotorPlanning::ode(const control::ODESolver::StateType& q, c
     qdot[10] = u[1];
     qdot[11] = u[2];
     qdot[12] = u[3];
+
+    // Print the state (q) and its derivative (qdot)
+    std::cout << "State (q): ";
+    for (const auto &val : q)
+    {
+        std::cout << val << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "State derivative (qdot): ";
+    for (const auto &val : qdot)
+    {
+        std::cout << val << " ";
+    }
+    std::cout << std::endl;
 }
 
 void ompl::app::QuadrotorPlanning::postPropagate(const base::State* /*state*/, const control::Control* /*control*/, const double /*duration*/, base::State* result)

@@ -38,10 +38,6 @@ find_package(pybind11 REQUIRED)
 add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
 target_link_libraries(PayloadTwoDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base Python3::Python Python3::NumPy pybind11::pybind11)
 
-# # Add the executable for PayloadTwoDronesDemo
-# add_executable(PayloadTwoDrones_old other_stuff/PayloadTwoDemo_old.cpp other_stuff/PayloadTwoDrones_old.cpp)
-# target_link_libraries(PayloadTwoDrones_old PRIVATE stdc++fs ompl ompl_app ompl_app_base Python3::Python Python3::NumPy pybind11::pybind11)
-
 # Add the executable for Test3DSystem
 add_executable(Test3DSystem src/test.cpp src/stateTransition.cpp)
 target_link_libraries(Test3DSystem PRIVATE Python3::Python Python3::NumPy stdc++fs)

@@ -24,30 +24,17 @@ using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
-
     auto stateSpace = setup.getStateSpace();
     auto *compoundSpace = stateSpace->as<base::CompoundStateSpace>();
     unsigned int droneCount = setup.getRobotCount();
 
-    // setup.inferEnvironmentBounds();
-
     // Set default validity checker to accept all states
-    setup.getSpaceInformation()->setStateValidityChecker([](const ompl::base::State * /*state*/) -> bool {
-        return true;
-    });
-
-    // base::RealVectorBounds bounds(3);
-    // bounds.setLow(-300);
-    // bounds.setHigh(600);
-
-    // // Apply bounds to the payload position (first subspace)
-    // stateSpace->as<ompl::base::CompoundStateSpace>()
-    //         ->getSubspace(0) // First subspace is payload position
-    //         ->as<ompl::base::RealVectorStateSpace>()
-    //         ->setBounds(bounds);
+    // setup.getSpaceInformation()->setStateValidityChecker([](const ompl::base::State * /*state*/) -> bool {
+    //     return true;
+    // });
 
     // Ensure SpaceInformation is fully configured
-    setup.getSpaceInformation()->setup();
+    // setup.getSpaceInformation()->setup();
 
     // Define start and goal states
     base::ScopedState<base::CompoundStateSpace> startState(stateSpace), goalState(stateSpace);
@@ -63,22 +50,30 @@ void payloadSystemSetup(app::PayloadSystem &setup)
     payloadStart->rotation().setIdentity(); // Quaternion: [0 0 0 1]
 
     // Set payload goal position
-    payloadGoal->setX(375.0);
-    payloadGoal->setY(375.0);
-    payloadGoal->setZ(-150.0);
+    payloadGoal->setX(125.0);
+    payloadGoal->setY(125.0);
+    payloadGoal->setZ(-300.0);
     payloadGoal->rotation().setIdentity(); // Quaternion: [0 0 0 1]
 
     unsigned int index = 1; // Start after payload (SE3)
 
-    // Set quaternions for drones and cables to [0 0 0 1]
-    for (unsigned int i = 0; i < 2 * droneCount; ++i)
+    // Initialize quaternions for drones and spherical coordinates for cables
+    for (unsigned int i = 0; i < droneCount; ++i)
     {
-        auto *quatStart = startState->as<base::RealVectorStateSpace::StateType>(index);
-        auto *quatGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
-        quatStart->values[0] = quatGoal->values[0] = 1.0;
-        quatStart->values[1] = quatGoal->values[1] = 0.0;
-        quatStart->values[2] = quatGoal->values[2] = 0.0;
-        quatStart->values[3] = quatGoal->values[3] = 0.0;
+        // Initialize drone quaternion to [0 0 0 1]
+        auto *droneQuatStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *droneQuatGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        droneQuatStart->values[0] = droneQuatGoal->values[0] = 0.0;
+        droneQuatStart->values[1] = droneQuatGoal->values[1] = 0.0;
+        droneQuatStart->values[2] = droneQuatGoal->values[2] = 0.0;
+        droneQuatStart->values[3] = droneQuatGoal->values[3] = 1.0;
+        ++index;
+
+        // Initialize cable spherical coordinates (theta, phi)
+        auto *cableAnglesStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *cableAnglesGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        cableAnglesStart->values[0] = cableAnglesGoal->values[0] = 0.0; // theta
+        cableAnglesStart->values[1] = cableAnglesGoal->values[1] = 0.0; // phi
         ++index;
     }
 
@@ -89,25 +84,40 @@ void payloadSystemSetup(app::PayloadSystem &setup)
         payloadVelocityStart->values[i] = payloadVelocityGoal->values[i] = 0.0;
     ++index;
 
-    // Set quaternion derivatives (payload, drones, cables) to [0 0 0 0]
-    for (unsigned int i = 0; i < 1 + 2 * droneCount; ++i)
+    // Set quaternion derivatives for payload, drones, and cable spherical coordinates to [0 0 0 0]
+    auto *payloadQuatDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+    auto *payloadQuatDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+    for (unsigned int i = 0; i < 4; ++i)
+        payloadQuatDerivStart->values[i] = payloadQuatDerivGoal->values[i] = 0.0;
+    ++index;
+
+    for (unsigned int i = 0; i < droneCount; ++i)
     {
-        auto *quatDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
-        auto *quatDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        // Set drone quaternion derivatives to [0 0 0 0]
+        auto *droneQuatDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *droneQuatDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
         for (unsigned int j = 0; j < 4; ++j)
-            quatDerivStart->values[j] = quatDerivGoal->values[j] = 0.0;
+            droneQuatDerivStart->values[j] = droneQuatDerivGoal->values[j] = 0.0;
+        ++index;
+
+        // Set cable spherical coordinate derivatives (theta_dot, phi_dot) to [0 0]
+        auto *cableAnglesDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *cableAnglesDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        for (unsigned int j = 0; j < 2; ++j)
+            cableAnglesDerivStart->values[j] = cableAnglesDerivGoal->values[j] = 0.0;
         ++index;
     }
-
 
     // Set the start and goal states
     setup.setStartAndGoalStates(startState, goalState, 0.5);
 
-    std::cout << "Start state: ";
-    startState.print(std::cout);
-    std::cout << "Goal state: ";
-    goalState.print(std::cout);
+    // std::cout << "Start state: ";
+    // startState.print(std::cout);
+    // std::cout << "\nGoal state: ";
+    // goalState.print(std::cout);
+    // std::cout << std::endl;
 }
+
 
 
 
@@ -169,15 +179,17 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 
         unsigned int index = 1; // Start after payload (SE3)
 
-        // Drone and cable quaternions
+        // Drone and cable states
         for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
         {
+            // Get drone quaternion
             const auto *droneQuat = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
-            const auto *cableQuat = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
             stateLine << droneQuat->values[0] << " " << droneQuat->values[1] << " "
                     << droneQuat->values[2] << " " << droneQuat->values[3] << " ";
-            stateLine << cableQuat->values[0] << " " << cableQuat->values[1] << " "
-                    << cableQuat->values[2] << " " << cableQuat->values[3] << " ";
+
+            // Get cable spherical coordinates (theta, phi)
+            const auto *cableAngles = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << cableAngles->values[0] << " " << cableAngles->values[1] << " ";
         }
 
         // Payload velocity and quaternion derivatives
@@ -187,27 +199,28 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         stateLine << payloadQuatDeriv->values[0] << " " << payloadQuatDeriv->values[1] << " "
                 << payloadQuatDeriv->values[2] << " " << payloadQuatDeriv->values[3] << " ";
 
-        // Drone and cable quaternion derivatives
+        // Drone quaternion and cable spherical coordinate derivatives
         for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
         {
+            // Get drone quaternion derivatives
             const auto *droneQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
-            const auto *cableQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
             stateLine << droneQuatDeriv->values[0] << " " << droneQuatDeriv->values[1] << " "
                     << droneQuatDeriv->values[2] << " " << droneQuatDeriv->values[3] << " ";
-            stateLine << cableQuatDeriv->values[0] << " " << cableQuatDeriv->values[1] << " "
-                    << cableQuatDeriv->values[2] << " " << cableQuatDeriv->values[3] << " ";
+
+            // Get cable spherical coordinate derivatives (theta_dot, phi_dot)
+            const auto *cableAnglesDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << cableAnglesDeriv->values[0] << " " << cableAnglesDeriv->values[1] << " ";
         }
 
         // Log state to file
+        // std::cout << stateLine.str() << std::endl;
         outFile << stateLine.str() << "\n";
         outFile.flush();
     });
 
 
 
-    // // Solve the planning problem
-    // auto terminationCondition = ompl::base::timedPlannerTerminationCondition(3.0); // 3 seconds
-    // std::cout << "Solving the problem...\n";
+
 
     try
     {

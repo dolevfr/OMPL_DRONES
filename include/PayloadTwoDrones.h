@@ -120,7 +120,10 @@ namespace ompl
             const base::State* getGeometricComponentStateInternal(const base::State* state, unsigned int index) const override;
 
             /** \brief Construct the control space for the system */
-            static control::ControlSpacePtr constructControlSpace();
+            static control::ControlSpacePtr constructControlSpace()
+            {
+                return std::make_shared<ompl::control::RealVectorControlSpace>(constructStateSpace(), droneCount_ * 4);
+            }
 
             /** \brief Construct the state space for the system */
             static base::StateSpacePtr constructStateSpace();
