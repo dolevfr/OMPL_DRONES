@@ -3,11 +3,10 @@
         {
             "name": "Linux",
             "includePath": [
-                // "${workspaceFolder}",                                // For matplotlibcpp.h
-                "/usr/include/python3.10",                           // Path to Python.h
-                "/usr/lib/python3/dist-packages/numpy/core/include", // Path to numpy/arrayobject.h
-                "/usr/local/include/ompl-1.6",                       // OMPL include path
-                "/usr/include/eigen3",                               // Eigen include path
+                "/usr/include/python3.10",
+                "/usr/lib/python3/dist-packages/numpy/core/include",
+                "/usr/local/include/ompl-1.6",
+                "/usr/include/eigen3",
                 "${workspaceFolder}/**"
             ],
             "defines": [],

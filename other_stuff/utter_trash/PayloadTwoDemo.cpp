@@ -11,6 +11,7 @@
 /* Author: Mark Moll (adapted for 4 drones) */
 
 #include <ompl/control/planners/rrt/RRT.h>
+#include <ompl/control/planners/kpiece/KPIECE1.h>
 #include <omplapp/config.h>
 #include <ompl/base/spaces/SE3StateSpace.h>
 #include <iostream>
@@ -23,61 +24,98 @@ using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
-    base::StateSpacePtr stateSpace = setup.getStateSpace();
+    auto stateSpace = setup.getStateSpace();
+    auto *compoundSpace = stateSpace->as<base::CompoundStateSpace>();
     unsigned int droneCount = setup.getRobotCount();
 
+    // Set default validity checker to accept all states
+    // setup.getSpaceInformation()->setStateValidityChecker([](const ompl::base::State * /*state*/) -> bool {
+    //     return true;
+    // });
+
+    // Ensure SpaceInformation is fully configured
+    // setup.getSpaceInformation()->setup();
+
     // Define start and goal states
-    auto startState = setup.getSpaceInformation()->allocState();
-    auto goalState = setup.getSpaceInformation()->allocState();
+    base::ScopedState<base::CompoundStateSpace> startState(stateSpace), goalState(stateSpace);
 
-    // --- Setup Start State ---
+    // Payload position and orientation (SE3StateSpace)
+    auto *payloadStart = startState->as<base::SE3StateSpace::StateType>(0);
+    auto *payloadGoal = goalState->as<base::SE3StateSpace::StateType>(0);
+
+    // Set payload start position
+    payloadStart->setX(125.0);
+    payloadStart->setY(125.0);
+    payloadStart->setZ(-150.0);
+    payloadStart->rotation().setIdentity(); // Quaternion: [0 0 0 1]
+
+    // Set payload goal position
+    payloadGoal->setX(125.0);
+    payloadGoal->setY(125.0);
+    payloadGoal->setZ(-300.0);
+    payloadGoal->rotation().setIdentity(); // Quaternion: [0 0 0 1]
+
+    unsigned int index = 1; // Start after payload (SE3)
+
+    // Initialize quaternions for drones and spherical coordinates for cables
+    for (unsigned int i = 0; i < droneCount; ++i)
     {
-        // Payload start state
-        auto *payloadStart = startState->as<ompl::base::CompoundState>()->as<ompl::base::SE3StateSpace::StateType>(0);
-        payloadStart->setX(125.0);
-        payloadStart->setY(125.0);
-        payloadStart->setZ(-150.0);
-        payloadStart->rotation().setIdentity();
+        // Initialize drone quaternion to [0 0 0 1]
+        auto *droneQuatStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *droneQuatGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        droneQuatStart->values[0] = droneQuatGoal->values[0] = 0.0;
+        droneQuatStart->values[1] = droneQuatGoal->values[1] = 0.0;
+        droneQuatStart->values[2] = droneQuatGoal->values[2] = 0.0;
+        droneQuatStart->values[3] = droneQuatGoal->values[3] = 1.0;
+        ++index;
 
-        for (unsigned int i = 0; i < droneCount; ++i)
-        {
-            // Drone quaternion
-            startState->as<ompl::base::CompoundState>()->as<ompl::base::SO3StateSpace::StateType>(1 + i * 2)->setIdentity();
-
-            // Cable quaternion
-            startState->as<ompl::base::CompoundState>()->as<ompl::base::SO3StateSpace::StateType>(2 + i * 2)->setIdentity();
-        }
+        // Initialize cable spherical coordinates (theta, phi)
+        auto *cableAnglesStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *cableAnglesGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        cableAnglesStart->values[0] = cableAnglesGoal->values[0] = 0.0; // theta
+        cableAnglesStart->values[1] = cableAnglesGoal->values[1] = 0.0; // phi
+        ++index;
     }
 
-    // --- Setup Goal State ---
+    // Set payload velocity to [0 0 0]
+    auto *payloadVelocityStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+    auto *payloadVelocityGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+    for (unsigned int i = 0; i < 3; ++i)
+        payloadVelocityStart->values[i] = payloadVelocityGoal->values[i] = 0.0;
+    ++index;
+
+    // Set quaternion derivatives for payload, drones, and cable spherical coordinates to [0 0 0 0]
+    auto *payloadQuatDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+    auto *payloadQuatDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+    for (unsigned int i = 0; i < 4; ++i)
+        payloadQuatDerivStart->values[i] = payloadQuatDerivGoal->values[i] = 0.0;
+    ++index;
+
+    for (unsigned int i = 0; i < droneCount; ++i)
     {
-        auto *payloadGoal = goalState->as<ompl::base::CompoundState>()->as<ompl::base::SE3StateSpace::StateType>(0);
-        payloadGoal->setX(375.0);
-        payloadGoal->setY(375.0);
-        payloadGoal->setZ(-150.0);
-        payloadGoal->rotation().setIdentity();
+        // Set drone quaternion derivatives to [0 0 0 0]
+        auto *droneQuatDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *droneQuatDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        for (unsigned int j = 0; j < 4; ++j)
+            droneQuatDerivStart->values[j] = droneQuatDerivGoal->values[j] = 0.0;
+        ++index;
 
-        for (unsigned int i = 0; i < droneCount; ++i)
-        {
-            // Drone quaternion
-            goalState->as<ompl::base::CompoundState>()->as<ompl::base::SO3StateSpace::StateType>(1 + i * 2)->setIdentity();
-
-            // Cable quaternion
-            goalState->as<ompl::base::CompoundState>()->as<ompl::base::SO3StateSpace::StateType>(2 + i * 2)->setIdentity();
-        }
+        // Set cable spherical coordinate derivatives (theta_dot, phi_dot) to [0 0]
+        auto *cableAnglesDerivStart = startState->as<base::RealVectorStateSpace::StateType>(index);
+        auto *cableAnglesDerivGoal = goalState->as<base::RealVectorStateSpace::StateType>(index);
+        for (unsigned int j = 0; j < 2; ++j)
+            cableAnglesDerivStart->values[j] = cableAnglesDerivGoal->values[j] = 0.0;
+        ++index;
     }
 
     // Set the start and goal states
-    base::ScopedState<> startScopedState(setup.getSpaceInformation());
-    base::ScopedState<> goalScopedState(setup.getSpaceInformation());
-    startScopedState = startState;
-    goalScopedState = goalState;
-    setup.setStartAndGoalStates(setup.getFullStateFromGeometricComponent(startScopedState),
-                                setup.getFullStateFromGeometricComponent(goalScopedState), 0.5);
+    setup.setStartAndGoalStates(startState, goalState, 0.5);
 
-    // Free allocated states
-    setup.getSpaceInformation()->freeState(startState);
-    setup.getSpaceInformation()->freeState(goalState);
+    // std::cout << "Start state: ";
+    // startState.print(std::cout);
+    // std::cout << "\nGoal state: ";
+    // goalState.print(std::cout);
+    // std::cout << std::endl;
 }
 
 
@@ -95,48 +133,123 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     setup.getStateSpace()->setup();
     setup.getSpaceInformation()->setup();
 
-    std::cout << "State space and space information setup complete.\n";
-
-    // Set up manual state validity checker (placeholder, assumes all states are valid)
-    setup.getSpaceInformation()->setStateValidityChecker(
-        [](const ompl::base::State *state) {
-            // Replace with your validity logic
-            return true; // Assume all states are valid for debugging
-        });
-
-    setup.setStateValidityChecker([&setup](const ompl::base::State *state) -> bool {
-        return setup.getSpaceInformation()->satisfiesBounds(state);
-    });
-
-
-    setup.getSpaceInformation()->setup();
-
     // Set up the planner
     auto planner = std::make_shared<ompl::control::RRT>(setup.getSpaceInformation());
     planner->setGoalBias(0.05);
     setup.setPlanner(planner);
 
-    // Solve the planning problem
-    if (setup.solve(20)) // Time limit of 20 seconds
+    // Validate planner setup
+    if (!setup.getPlanner())
     {
-        control::PathControl &path(setup.getSolutionPath());
-        path.printAsMatrix(std::cout);
+        std::cerr << "Error: Planner is not initialized.\n";
+        return;
+    }
 
-        if (!setup.haveExactSolutionPath())
+    // Open file for writing and ensure it works
+    std::ofstream outFile("solution_path.txt", std::ios::out | std::ios::trunc);
+    if (!outFile.is_open())
+    {
+        std::cerr << "Error: Unable to open file for writing solution path.\n";
+        return;
+    }
+
+    // Wrap the state propagator to log every propagated state
+    auto originalPropagator = setup.getSpaceInformation()->getStatePropagator();
+    setup.getSpaceInformation()->setStatePropagator([&setup, originalPropagator, &outFile](
+                                                        const ompl::base::State *from,
+                                                        const ompl::control::Control *control,
+                                                        double duration,
+                                                        ompl::base::State *to) {
+        originalPropagator->propagate(from, control, duration, to);
+
+        const auto *compoundState = to->as<ompl::base::CompoundState>();
+        if (!compoundState)
         {
-            std::cout << "Solution is approximate. Distance to actual goal is "
-                      << setup.getProblemDefinition()->getSolutionDifference() << std::endl;
+            std::cerr << "Error: Propagated state is invalid.\n";
+            return;
+        }
+
+        std::ostringstream stateLine;
+
+        // Payload position and quaternion
+        const auto *payloadSE3 = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+        stateLine << payloadSE3->getX() << " " << payloadSE3->getY() << " " << payloadSE3->getZ() << " ";
+        stateLine << payloadSE3->rotation().x << " " << payloadSE3->rotation().y << " "
+                << payloadSE3->rotation().z << " " << payloadSE3->rotation().w << " ";
+
+        unsigned int index = 1; // Start after payload (SE3)
+
+        // Drone and cable states
+        for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+        {
+            // Get drone quaternion
+            const auto *droneQuat = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << droneQuat->values[0] << " " << droneQuat->values[1] << " "
+                    << droneQuat->values[2] << " " << droneQuat->values[3] << " ";
+
+            // Get cable spherical coordinates (theta, phi)
+            const auto *cableAngles = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << cableAngles->values[0] << " " << cableAngles->values[1] << " ";
+        }
+
+        // Payload velocity and quaternion derivatives
+        const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+        const auto *payloadQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+        stateLine << payloadVelocity->values[0] << " " << payloadVelocity->values[1] << " " << payloadVelocity->values[2] << " ";
+        stateLine << payloadQuatDeriv->values[0] << " " << payloadQuatDeriv->values[1] << " "
+                << payloadQuatDeriv->values[2] << " " << payloadQuatDeriv->values[3] << " ";
+
+        // Drone quaternion and cable spherical coordinate derivatives
+        for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+        {
+            // Get drone quaternion derivatives
+            const auto *droneQuatDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << droneQuatDeriv->values[0] << " " << droneQuatDeriv->values[1] << " "
+                    << droneQuatDeriv->values[2] << " " << droneQuatDeriv->values[3] << " ";
+
+            // Get cable spherical coordinate derivatives (theta_dot, phi_dot)
+            const auto *cableAnglesDeriv = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(index++);
+            stateLine << cableAnglesDeriv->values[0] << " " << cableAnglesDeriv->values[1] << " ";
+        }
+
+        // Log state to file
+        // std::cout << stateLine.str() << std::endl;
+        outFile << stateLine.str() << "\n";
+        outFile.flush();
+    });
+
+
+
+
+
+    try
+    {
+        if (setup.solve(3))
+        {
+            control::PathControl &path(setup.getSolutionPath());
+            path.printAsMatrix(std::cout);
+
+            if (!setup.haveExactSolutionPath())
+            {
+                std::cout << "Solution is approximate. Distance to actual goal is "
+                          << setup.getProblemDefinition()->getSolutionDifference() << std::endl;
+            }
+            else
+            {
+                std::cout << "Exact solution found!\n";
+            }
         }
         else
         {
-            std::cout << "Exact solution found!\n";
+            std::cout << "No solution found within the time limit.\n";
         }
     }
-    else
+    catch (const std::exception &e)
     {
-        std::cout << "No solution found within the time limit.\n";
+        std::cerr << "Error during planning: " << e.what() << std::endl;
     }
 }
+
 
 
 
