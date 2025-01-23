@@ -45,9 +45,6 @@ void quadrotorSetup(app::QuadrotorPlanning &setup)
     // set the start & goal states
     setup.setStartAndGoalStates(setup.getFullStateFromGeometricComponent(start),
                                 setup.getFullStateFromGeometricComponent(goal), .5);
-
-    std::cout << "Start state: " << start << std::endl;
-    std::cout << "Goal state: " << goal << std::endl;
 }
 
 void quadrotorDemo(app::QuadrotorPlanning &setup)

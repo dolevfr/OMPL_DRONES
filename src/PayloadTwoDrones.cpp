@@ -202,8 +202,11 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
                 omega.y(), -omega.z(),     0,      omega.x(),
                 omega.z(),  omega.y(), -omega.x(),    0;
 
+        // Convert quaternion to 4D vector
+        Eigen::Vector4d quatVec(droneRot.w(), droneRot.x(), droneRot.y(), droneRot.z());
+
         // Compute quaternion derivative
-        Eigen::Vector4d quatDot = 0.5 * Omega * droneRot;
+        Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
 
         // Angular acceleration calculation
         Eigen::Vector3d torque(u[i * 4 + 1], u[i * 4 + 2], u[i * 4 + 3]); // Control inputs for torques
@@ -240,8 +243,11 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         payloadAngVel.y(), -payloadAngVel.z(),     0,      payloadAngVel.x(),
         payloadAngVel.z(),  payloadAngVel.y(), -payloadAngVel.x(),    0;
 
+    // Convert quaternion to 4D vector
+    Eigen::Vector4d quatVec(payloadRot.w(), payloadRot.x(), payloadRot.y(), payloadRot.z());
+
     // Compute quaternion derivative
-    Eigen::Vector4d quatDot = 0.5 * Omega * payloadRot;
+    Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
 
     // Payload linear and angular acceleration
     Eigen::Vector3d payloadAccel = payloadForce / m_payload;
@@ -269,18 +275,23 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
 
 
 
-void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const control::Control* /*control*/, const double /*duration*/, base::State* result)
+void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const control::Control* control, const double /*duration*/, base::State* result)
 {
+    // Access the CompoundStateSpace and subspaces
     const base::CompoundStateSpace* cs = getStateSpace()->as<base::CompoundStateSpace>();
 
-    // Normalize the SE3 quaternion for the payload
-    const base::SE3StateSpace* SE3 = cs->as<base::SE3StateSpace>(0);
-    base::SE3StateSpace::StateType& payloadSE3State = *result->as<base::CompoundStateSpace::StateType>()
-                                                         ->as<base::SE3StateSpace::StateType>(0);
-    SE3->enforceBounds(&payloadSE3State.rotation());
+    // Cast the result to a CompoundStateSpace::StateType
+    auto *compoundState = result->as<ompl::base::CompoundStateSpace::StateType>();
 
-    // Enforce bounds for the payload's velocity
-    cs->getSubspace(1)->enforceBounds(result->as<base::CompoundStateSpace::StateType>()->components[1]);
+    // Normalize the SE3 quaternion for the payload
+    const base::SE3StateSpace* SE3 = cs->as<base::SE3StateSpace>(0); // Assuming the payload is at index 0
+    base::SE3StateSpace::StateType& payloadSE3State = *compoundState->as<base::SE3StateSpace::StateType>(0);
+
+    // Normalize the quaternion
+    SE3->as<base::SO3StateSpace>(1)->enforceBounds(&payloadSE3State.rotation());
+
+    // Enforce velocity bounds (assuming velocity is in subspace 1)
+    cs->getSubspace(1)->enforceBounds(compoundState->as<base::RealVectorStateSpace::StateType>(1));
 
     // Process each drone
     for (unsigned int i = 0; i < droneCount_; ++i)
@@ -289,49 +300,110 @@ void ompl::app::PayloadSystem::postPropagate(const base::State* /*state*/, const
 
         // Normalize the SO3 quaternion for each drone
         const base::SO3StateSpace* SO3 = cs->as<base::SO3StateSpace>(droneBaseIndex);
-        base::SO3StateSpace::StateType& droneSO3State = *result->as<base::CompoundStateSpace::StateType>()
-                                                          ->components[droneBaseIndex]
+        base::SO3StateSpace::StateType& droneSO3State = *compoundState->components[droneBaseIndex]
                                                           ->as<base::SO3StateSpace::StateType>();
         SO3->enforceBounds(&droneSO3State);
 
         // Enforce velocity bounds for each drone
-        cs->getSubspace(droneBaseIndex + 1)->enforceBounds(result->as<base::CompoundStateSpace::StateType>()->components[droneBaseIndex + 1]);
+        cs->getSubspace(droneBaseIndex + 1)->enforceBounds(compoundState->components[droneBaseIndex + 1]);
 
         // Enforce bounds for cable angles and velocities for each drone
-        cs->getSubspace(droneBaseIndex + 2)->enforceBounds(result->as<base::CompoundStateSpace::StateType>()->components[droneBaseIndex + 2]);
+        base::RealVectorStateSpace::StateType* cableState =
+            compoundState->components[droneBaseIndex + 2]->as<base::RealVectorStateSpace::StateType>();
+        cs->getSubspace(droneBaseIndex + 2)->enforceBounds(cableState);
+
+        // Normalize phi (cable elevation angle)
+        double& phi = cableState->values[1]; // Assuming cable angles are stored as theta = [0], phi = [1]
+        while (phi < 0)
+            phi += 2 * M_PI; // Add 2π until phi is positive
+        while (phi > 2 * M_PI)
+            phi -= 2 * M_PI; // Subtract 2π until phi is within range
     }
+
+    // // Print control values
+    // const double *controlValues = static_cast<const ompl::control::RealVectorControlSpace::ControlType *>(control)->values;
+    // std::ostringstream stateStream;
+    // stateStream << "Control: [";
+    // for (unsigned int i = 0; i < droneCount_ * 4; ++i) // Assuming 4 control inputs per drone
+    //     stateStream << controlValues[i] << " ";
+    // stateStream << "]\n";
+
+    // // Print payload position, quaternion, and velocity
+    // stateStream << "Payload Position: ["
+    //             << payloadSE3State.getX() << ", " << payloadSE3State.getY() << ", " << payloadSE3State.getZ() << "] ";
+    // stateStream << "Quaternion: ["
+    //             << payloadSE3State.rotation().x << ", " << payloadSE3State.rotation().y << ", "
+    //             << payloadSE3State.rotation().z << ", " << payloadSE3State.rotation().w << "] ";
+
+    // const auto *payloadVel = compoundState->components[1]->as<ompl::base::RealVectorStateSpace::StateType>();
+    // stateStream << "Payload Velocity: ["
+    //             << payloadVel->values[0] << ", " << payloadVel->values[1] << ", " << payloadVel->values[2] << "]\n";
+
+    // // Print drone and cable states with velocities
+    // unsigned int startIndex = 2; // Start index after payload's SE3 state and velocity
+    // for (unsigned int i = 0; i < droneCount_; ++i)
+    // {
+    //     // Drone quaternion
+    //     auto *droneQuat = compoundState->components[startIndex + 3 * i]
+    //                         ->as<ompl::base::SO3StateSpace::StateType>();
+    //     stateStream << "Drone " << i << " Quaternion: ["
+    //                 << droneQuat->x << ", " << droneQuat->y << ", "
+    //                 << droneQuat->z << ", " << droneQuat->w << "] ";
+
+    //     // Drone velocity
+    //     auto *droneVel = compoundState->components[startIndex + 3 * i + 1]
+    //                         ->as<ompl::base::RealVectorStateSpace::StateType>();
+    //     stateStream << "Drone " << i << " Velocity: ["
+    //                 << droneVel->values[0] << ", " << droneVel->values[1] << ", " << droneVel->values[2] << "] ";
+
+    //     // Cable angles
+    //     auto *cableAngles = compoundState->components[startIndex + 3 * i + 2]
+    //                             ->as<ompl::base::RealVectorStateSpace::StateType>();
+    //     stateStream << "Cable " << i << " Spherical Coordinates (theta, phi): ["
+    //                 << cableAngles->values[0] << ", " << cableAngles->values[1] << "]\n";
+    // }
+
+    // std::cout << "Post-Propagation State:\n" << stateStream.str();
+
 }
+
+
+
 
 void ompl::app::PayloadSystem::setDefaultBounds()
 {
-    base::RealVectorBounds velBounds(6);
-    velBounds.setLow(-1);  // Set valid lower bounds
-    velBounds.setHigh(1);  // Set valid upper bounds
+    // Enforce payload position bounds (-300, 600) for x, y, z
+    base::RealVectorBounds positionBounds(3); // SE3 position bounds
+    positionBounds.setLow(-300);
+    positionBounds.setHigh(600);
+    getStateSpace()->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(0)->setBounds(positionBounds);
 
-    base::RealVectorBounds posBounds(3);
-    posBounds.setLow(-200); // Set lower bounds for position
-    posBounds.setHigh(500); // Set upper bounds for position
+    // Enforce payload velocity bounds (-10, 10) for x, y, z, and angular velocities
+    base::RealVectorBounds velocityBounds(6); // Bounds for payload velocity (linear and angular)
+    velocityBounds.setLow(-10);
+    velocityBounds.setHigh(10);
+    getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velocityBounds);
 
+    // Loop through each drone and enforce bounds
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
-        // Set bounds for SE3 subspace (position)
-        getStateSpace()->as<base::CompoundStateSpace>()
-            ->as<base::SE3StateSpace>(i * 2)
-            ->setBounds(posBounds);
+        // Enforce bounds on drone angular velocity (-10, 10) for x, y, z
+        base::RealVectorBounds droneVelocityBounds(3); // Bounds for drone angular velocity
+        droneVelocityBounds.setLow(-10);
+        droneVelocityBounds.setHigh(10);
+        getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(3 + i * 3)->setBounds(droneVelocityBounds);
 
-        // Set bounds for RealVector subspace (velocity)
-        getStateSpace()->as<base::CompoundStateSpace>()
-            ->as<base::RealVectorStateSpace>(i * 2 + 1)
-            ->setBounds(velBounds);
+        // Enforce bounds on theta for each cable (-10, 10 degrees)
+        base::RealVectorBounds cableAngleBounds(4); // Bounds for (theta, phi, theta_dot, phi_dot)
+        cableAngleBounds.setLow(0, -10 * M_PI / 180); // Theta (index 0) lower bound in radians
+        cableAngleBounds.setHigh(0, 10 * M_PI / 180); // Theta (index 0) upper bound in radians
+        cableAngleBounds.setLow(1, -1e6); // No restriction on phi
+        cableAngleBounds.setHigh(1, 1e6);
+        cableAngleBounds.setLow(2, -1e6); // No restriction on theta_dot
+        cableAngleBounds.setHigh(2, 1e6);
+        cableAngleBounds.setLow(3, -1e6); // No restriction on phi_dot
+        cableAngleBounds.setHigh(3, 1e6);
+        getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(4 + i * 3)->setBounds(cableAngleBounds);
     }
-
-    // Set bounds for payload SE3 subspace (position)
-    getStateSpace()->as<base::CompoundStateSpace>()
-        ->as<base::SE3StateSpace>(droneCount_ * 2)
-        ->setBounds(posBounds);
-
-    // Set bounds for payload RealVector subspace (velocity)
-    getStateSpace()->as<base::CompoundStateSpace>()
-        ->as<base::RealVectorStateSpace>(droneCount_ * 2 + 1)
-        ->setBounds(velBounds);
 }
+

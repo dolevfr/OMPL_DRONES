@@ -24,6 +24,9 @@ namespace ompl
             /** \brief Check if self-collision is enabled (not used for payload systems) */
             bool isSelfCollisionEnabled() const override { return false; }
 
+            /** \brief Segmentation fault otherwise */
+            void inferProblemDefinitionBounds() override {}
+
             /** \brief Get the number of drones in the system */
             unsigned int getRobotCount() const override { return droneCount_; }
 
@@ -114,8 +117,8 @@ namespace ompl
             // double beta_ = 0.1;                // Damping coefficients for each drone
             Eigen::Matrix3d payloadInertia = Eigen::Matrix3d::Identity() * 5; // Example: uniform inertia
             Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.1; // Example: uniform inertia
-            double payloadDimension = 1.0; // Example: 1m rod
-            double l = 2;                 // Length of the cables
+            double payloadDimension = 2.0; // Example: 1m rod
+            double l = 1;                 // Length of the cables
 
             control::ODESolverPtr odeSolver;          // ODE solver for the system
         };

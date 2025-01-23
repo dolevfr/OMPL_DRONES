@@ -23,134 +23,84 @@ using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
-    // Retrieve the state space
-    base::StateSpacePtr stateSpace = setup.getStateSpace();
+    base::StateSpacePtr stateSpace(setup.getStateSpace());
 
-    // Define bounds for SE3 subspaces (Payload and Drones)
-    base::RealVectorBounds bounds(3);
-    bounds.setLow(-200);
-    bounds.setHigh(500);
+    // Define start state
+    base::ScopedState<base::CompoundStateSpace> start(stateSpace);
 
-    // Set bounds for each drone and the payload
+    // Set payload position to (125, 125, -150)
+    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
+
+    // Set payload orientation (quaternion identity)
+    start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
+
+    // Set payload velocities to zero
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        start->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+    }
+
+    // Set drone states
     for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
     {
-        stateSpace->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(i * 2)->setBounds(bounds); // Drone bounds
-    }
-    stateSpace->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(setup.getRobotCount() * 2)->setBounds(bounds); // Payload bounds
+        unsigned int baseIndex = 2 + i * 3; // Drone SO3 starts at index 2 + i * 3
 
-    // Create the start state
-    base::ScopedState<> start(stateSpace);
+        // Set drone orientation (quaternion identity)
+        start->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
 
-    // Set the payload start position and orientation
-    auto *payloadStart = start->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(setup.getRobotCount() * 2);
-    payloadStart->setX(125);  // X-coordinate
-    payloadStart->setY(125);  // Y-coordinate
-    payloadStart->setZ(-150); // Z-coordinate
-    payloadStart->rotation().setIdentity(); // Set the payload's initial rotation (trivial quaternion)
-
-    // Set drones' start positions above payload corners
-    double cableLength = setup.getCableLength(); // Cable length
-    for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
-    {
-        // Get the corner position in the payload's local frame
-        Eigen::Vector3d cornerLocal = setup.getPayloadCorner(d);
-
-        // Transform the corner to the world frame (trivial rotation for payload)
-        Eigen::Vector3d cornerWorld = Eigen::Vector3d(125, 125, -150) + cornerLocal;
-
-        // Drone position is directly above the corner at a distance of `cableLength`
-        Eigen::Vector3d droneStartPos = cornerWorld + Eigen::Vector3d(0, 0, cableLength);
-
-        // Set the drone's SE3 start position
-        auto *droneStart = start->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(d * 2);
-        droneStart->setX(droneStartPos.x());
-        droneStart->setY(droneStartPos.y());
-        droneStart->setZ(droneStartPos.z());
-        droneStart->rotation().setIdentity(); // Drones start with trivial quaternion
-
-        // Set the drone's velocity to zero
-        auto *velocityStart = start->as<base::CompoundState>()->as<base::RealVectorStateSpace::StateType>(d * 2 + 1);
-        for (unsigned int j = 0; j < 6; ++j)
+        // Set drone velocities to zero
+        for (unsigned int j = 0; j < 3; ++j)
         {
-            velocityStart->values[j] = 0.0; // Initialize all velocity components to 0
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+        }
+
+        // Set cable angles and velocities to zero
+        for (unsigned int j = 0; j < 4; ++j)
+        {
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
 
-    // Set trivial start velocities for the payload
-    auto *payloadVelocityStart = start->as<base::CompoundState>()->as<base::RealVectorStateSpace::StateType>(setup.getRobotCount() * 2 + 1);
-    for (unsigned int j = 0; j < 6; ++j)
+    // Define goal state
+    base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
+
+    // Set payload position to (375, 375, -150)
+    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(375.0, 375.0, -150.0);
+
+    // Set payload orientation (quaternion identity)
+    goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
+
+    // Set payload velocities to zero
+    for (unsigned int i = 0; i < 6; ++i)
     {
-        payloadVelocityStart->values[j] = 0.0; // Initialize all payload velocity components to 0
+        goal->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
     }
 
-    // Create the goal state
-    base::ScopedState<> goal(stateSpace);
-
-    // Set the payload goal position and orientation (only X, Y are changed)
-    auto *payloadGoal = goal->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(setup.getRobotCount() * 2);
-    payloadGoal->setX(375);  // X-coordinate
-    payloadGoal->setY(375);  // Y-coordinate
-    payloadGoal->setZ(-150); // Z-coordinate (same as start)
-    payloadGoal->rotation().setIdentity(); // Same trivial quaternion as the start state
-
-    // Set drones' goal positions above payload corners
-    for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
+    // Set drone states (similar to start state)
+    for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
     {
-        // Get the corner position in the payload's local frame
-        Eigen::Vector3d cornerLocal = setup.getPayloadCorner(d);
+        unsigned int baseIndex = 2 + i * 3;
 
-        // Transform the corner to the world frame for the goal position
-        Eigen::Vector3d cornerWorld = Eigen::Vector3d(375, 375, -150) + cornerLocal;
+        // Set drone orientation (quaternion identity)
+        goal->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
 
-        // Drone position is directly above the corner at a distance of `cableLength`
-        Eigen::Vector3d droneGoalPos = cornerWorld + Eigen::Vector3d(0, 0, cableLength);
-
-        // Set the drone's SE3 goal position
-        auto *droneGoal = goal->as<base::CompoundState>()->as<base::SE3StateSpace::StateType>(d * 2);
-        droneGoal->setX(droneGoalPos.x());
-        droneGoal->setY(droneGoalPos.y());
-        droneGoal->setZ(droneGoalPos.z());
-        droneGoal->rotation().setIdentity(); // Same trivial quaternion as the start state
-
-        // Set the drone's velocity to zero
-        auto *velocityGoal = goal->as<base::CompoundState>()->as<base::RealVectorStateSpace::StateType>(d * 2 + 1);
-        for (unsigned int j = 0; j < 6; ++j)
+        // Set drone velocities to zero
+        for (unsigned int j = 0; j < 3; ++j)
         {
-            velocityGoal->values[j] = 0.0; // Initialize all velocity components to 0
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+        }
+
+        // Set cable angles and velocities to zero
+        for (unsigned int j = 0; j < 4; ++j)
+        {
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
 
-    // Set trivial goal velocities for the payload
-    auto *payloadVelocityGoal = goal->as<base::CompoundState>()->as<base::RealVectorStateSpace::StateType>(setup.getRobotCount() * 2 + 1);
-    for (unsigned int j = 0; j < 6; ++j)
-    {
-        payloadVelocityGoal->values[j] = 0.0; // Initialize all payload velocity components to 0
-    }
-
-    // Convert start and goal to full states
-    auto fullStart = setup.getFullStateFromGeometricComponent(start);
-    auto fullGoal = setup.getFullStateFromGeometricComponent(goal);
-
-    setup.setStateValidityChecker([&setup](const ompl::base::State *state) -> bool {
-        // Perform your validity checks here (e.g., bounds, collisions, etc.)
-        return true;
-    });
-
-
-    // Check if the start and goal states are valid
-    if (!setup.getSpaceInformation()->isValid(fullStart.get()))
-    {
-        std::cerr << "Error: Start state is invalid.\n";
-        return;
-    }
-    if (!setup.getSpaceInformation()->isValid(fullGoal.get()))
-    {
-        std::cerr << "Error: Goal state is invalid.\n";
-        return;
-    }
-    // Set start and goal states in the planner
-    setup.setStartAndGoalStates(fullStart, fullGoal, 0.5);
+    // Set start and goal states with a threshold of 0.5
+    setup.setStartAndGoalStates(start, goal, 0.5);
 }
+
 
 
 void payloadSystemDemo(app::PayloadSystem &setup)
@@ -169,7 +119,7 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         std::cerr << "Error: Unable to open file for writing solution path.\n";
         return;
     }
-
+    std::cout << "Writing propagated states to solution_path.txt...\n";
     // Wrap the state propagator to log every propagated state
     auto originalPropagator = setup.getSpaceInformation()->getStatePropagator();
     setup.getSpaceInformation()->setStatePropagator([&setup, originalPropagator, &outFile](
@@ -189,22 +139,44 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         }
 
         std::ostringstream stateLine;
-        for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
-        {
-            const auto *droneState = compoundState->as<ompl::base::SE3StateSpace::StateType>(d * 2);
 
-            // Log drone position and quaternion
-            stateLine << droneState->getX() << " " << droneState->getY() << " " << droneState->getZ() << " ";
-            stateLine << droneState->rotation().x << " " << droneState->rotation().y << " "
-                      << droneState->rotation().z << " " << droneState->rotation().w << " ";
-        }
-
-        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(setup.getRobotCount() * 2);
-
-        // Log payload position and quaternion
+        // Log payload state
+        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
         stateLine << payloadState->getX() << " " << payloadState->getY() << " " << payloadState->getZ() << " ";
         stateLine << payloadState->rotation().x << " " << payloadState->rotation().y << " "
-                  << payloadState->rotation().z << " " << payloadState->rotation().w << " ";
+              << payloadState->rotation().z << " " << payloadState->rotation().w << " ";
+
+        // Log payload velocities
+        const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            stateLine << payloadVelocity->values[i] << " ";
+        }
+
+        // Log drone states
+        for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
+        {
+            unsigned int baseIndex = 2 + d * 3;
+
+            // Log drone orientation
+            const auto *droneOrientation = compoundState->as<ompl::base::SO3StateSpace::StateType>(baseIndex);
+            stateLine << droneOrientation->x << " " << droneOrientation->y << " "
+                  << droneOrientation->z << " " << droneOrientation->w << " ";
+
+            // Log drone velocities
+            const auto *droneVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1);
+            for (unsigned int i = 0; i < 3; ++i)
+            {
+            stateLine << droneVelocity->values[i] << " ";
+            }
+
+            // Log cable angles and velocities
+            const auto *cableState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2);
+            for (unsigned int i = 0; i < 4; ++i)
+            {
+            stateLine << cableState->values[i] << " ";
+            }
+        }
 
         outFile << stateLine.str() << "\n";
         outFile.flush(); // Ensure the data is written immediately
