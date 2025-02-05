@@ -34,11 +34,6 @@ namespace ompl
             /** \brief Get the solve time for the system */
             double getSolveTime() const { return solveTime; }
 
-            /** \brief Get the hover thrust for each drone */
-            static double getHoverThrust(double m_payload, double m_drone, unsigned int numDrones) {
-                return (m_payload / numDrones + m_drone) * 9.81;
-            }
-
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
 
@@ -122,31 +117,37 @@ namespace ompl
 
             double m_payload = 5.0;                   // Mass of the payload
             double m_drone = 1.0;                     // Mass of each drone
-            double payloadDimension = 2.0; // Example: 1m rod
+
+            double w = 2.0;                           // Payload width
+            double d = 2.0;                           // Payload depth
+            double h = 1.0;                           // Payload height
+
             double l = 1;                 // Length of the cables
-            double hoverThrust = (m_payload / getRobotCount() + m_drone) * 9.81; // Hover thrust for each drone
-            Eigen::Matrix3d payloadInertia = (Eigen::Matrix3d() << 
-                1e-3, 0, 0,
-                0, m_payload * payloadDimension * payloadDimension / 12, 0,
-                0, 0, m_payload * payloadDimension * payloadDimension / 12).finished();
+
             Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.01; // Example: uniform inertia
+
+            Eigen::Matrix3d payloadInertia = (Eigen::Matrix3d() << 
+                (1.0 / 12.0) * m_payload * (h * h + d * d), 0, 0,
+                0, (1.0 / 12.0) * m_payload * (w * w + h * h), 0,
+                0, 0, (1.0 / 12.0) * m_payload * (w * w + d * d)).finished();
 
             // Inputs of drones
             static constexpr double maxTorque = 5;
-            static constexpr double maxThrust = 60;
+            static constexpr double maxThrust = 30;
 
             static constexpr double maxDroneAngle = 30;
             static constexpr double maxDroneVel = 2;
-
+            
+            static constexpr double maxAnglePayload = 10;
             static constexpr double maxPayloadVel = 20;
 
-            static constexpr double maxAnglePayload = 10;
+
 
             // Angle of cable from vertical
             static constexpr double maxTheta = 30;
             static constexpr double maxThetaVel = 5;
 
-            double solveTime = 3.0;
+            double solveTime = 60.0;
 
 
 

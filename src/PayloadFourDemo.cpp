@@ -24,86 +24,88 @@ using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
-    // base::StateSpacePtr stateSpace(setup.getStateSpace());
-    // base::ScopedState<base::CompoundStateSpace> start(stateSpace);
-    // start->as<base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
-    // start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-    // for (unsigned int i = 0; i < 6; ++i)
-    // {
-    //     start->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
-    // }
-    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
-    // {
-    //     unsigned int baseIndex = 2 + i * 3;
-    //     start->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
-    //     for (unsigned int j = 0; j < 3; ++j)
-    //     {
-    //         start->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
-    //     }
-    //     for (unsigned int j = 0; j < 4; ++j)
-    //     {
-    //         start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
-    //     }
-    // }
-    // base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
-    // goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(100.0, 125.0, -150.0);
-    // goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-    // for (unsigned int i = 0; i < 6; ++i)
-    // {
-    //     goal->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
-    // }
-    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
-    // {
-    //     unsigned int baseIndex = 2 + i * 3;
-    //     goal->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
-    //     for (unsigned int j = 0; j < 3; ++j)
-    //     {
-    //         goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
-    //     }
-    //     for (unsigned int j = 0; j < 4; ++j)
-    //     {
-    //         goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
-    //     }
-    // }
-
-    // Retrieve the state space
-    ompl::base::StateSpacePtr stateSpace = setup.getStateSpace();
-
-    // Define the payload goal position
-    Eigen::Vector3d goalPosition(150.0, 125.0, -150.0);
-
-    // Create a goal based only on payload position
-    auto goal = std::make_shared<PayloadPositionGoal>(setup.getSpaceInformation(), goalPosition);
-
-    // Set the goal in the planning setup
-    setup.setGoal(goal);
-
-    // Create the start state
-    ompl::base::ScopedState<ompl::base::CompoundStateSpace> start(stateSpace);
-    start->as<ompl::base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
-    start->as<ompl::base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-
+    base::StateSpacePtr stateSpace(setup.getStateSpace());
+    base::ScopedState<base::CompoundStateSpace> start(stateSpace);
+    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
+    start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
     {
-        start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+        start->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
     }
-
     for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
     {
         unsigned int baseIndex = 2 + i * 3;
-        start->as<ompl::base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
+        start->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
         for (unsigned int j = 0; j < 3; ++j)
         {
-            start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
         }
         for (unsigned int j = 0; j < 4; ++j)
         {
-            start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
+        }
+    }
+    base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
+    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(150.0, 125.0, -150.0);
+    goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        goal->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+    }
+    for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+    {
+        unsigned int baseIndex = 2 + i * 3;
+        goal->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
+        for (unsigned int j = 0; j < 3; ++j)
+        {
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+        }
+        for (unsigned int j = 0; j < 4; ++j)
+        {
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
 
-    // Set start state
-    setup.setStartState(start);
+    setup.setStartAndGoalStates(start, goal);
+
+    // // Retrieve the state space
+    // ompl::base::StateSpacePtr stateSpace = setup.getStateSpace();
+
+    // // Define the payload goal position
+    // Eigen::Vector3d goalPosition(150.0, 125.0, -150.0);
+
+    // // Create a goal based only on payload position
+    // auto goal = std::make_shared<PayloadPositionGoal>(setup.getSpaceInformation(), goalPosition);
+
+    // // Set the goal in the planning setup
+    // setup.setGoal(goal);
+
+    // // Create the start state
+    // ompl::base::ScopedState<ompl::base::CompoundStateSpace> start(stateSpace);
+    // start->as<ompl::base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
+    // start->as<ompl::base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
+
+    // for (unsigned int i = 0; i < 6; ++i)
+    // {
+    //     start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+    // }
+
+    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+    // {
+    //     unsigned int baseIndex = 2 + i * 3;
+    //     start->as<ompl::base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
+    //     for (unsigned int j = 0; j < 3; ++j)
+    //     {
+    //         start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+    //     }
+    //     for (unsigned int j = 0; j < 4; ++j)
+    //     {
+    //         start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
+    //     }
+    // }
+
+    // // Set start state
+    // setup.setStartState(start);
 }
 
 
@@ -226,5 +228,5 @@ int main(int argc, char ** /*unused*/)
     path.printAsMatrix(outFile); // Save the solution matrix to the file
     outFile.close();
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories.py");
+    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_3D.py");
 }
