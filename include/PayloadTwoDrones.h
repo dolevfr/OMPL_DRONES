@@ -8,6 +8,7 @@
 #include <ompl/control/ODESolver.h>
 #include <ompl/control/spaces/RealVectorControlSpace.h>  // Include the correct header for RealVectorControlSpace
 #include <ompl/base/spaces/SE3StateSpace.h>  // Include the correct header for SE3StateSpace
+#include <ompl/base/goals/GoalRegion.h>
 
 namespace ompl
 {
@@ -29,6 +30,14 @@ namespace ompl
 
             /** \brief Get the number of drones in the system */
             unsigned int getRobotCount() const override { return droneCount_; }
+
+            /** \brief Get the solve time for the system */
+            double getSolveTime() const { return solveTime; }
+
+            /** \brief Get the hover thrust for each drone */
+            static double getHoverThrust(double m_payload, double m_drone, unsigned int numDrones) {
+                return (m_payload / numDrones + m_drone) * 9.81;
+            }
 
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
@@ -111,18 +120,65 @@ namespace ompl
 
             unsigned int iterationNumber_; // Track the iteration count
 
-            double m_payload = 10.0;                   // Mass of the payload
+            double m_payload = 5.0;                   // Mass of the payload
             double m_drone = 1.0;                     // Mass of each drone
-            // double massInv_ = 1.0 / m_drone;              // Inverse masses for each drone
-            // double beta_ = 0.1;                // Damping coefficients for each drone
-            Eigen::Matrix3d payloadInertia = Eigen::Matrix3d::Identity() * 5; // Example: uniform inertia
-            Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.1; // Example: uniform inertia
             double payloadDimension = 2.0; // Example: 1m rod
             double l = 1;                 // Length of the cables
+            double hoverThrust = (m_payload / getRobotCount() + m_drone) * 9.81; // Hover thrust for each drone
+            Eigen::Matrix3d payloadInertia = (Eigen::Matrix3d() << 
+                1e-3, 0, 0,
+                0, m_payload * payloadDimension * payloadDimension / 12, 0,
+                0, 0, m_payload * payloadDimension * payloadDimension / 12).finished();
+            Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.01; // Example: uniform inertia
+
+            // Inputs of drones
+            static constexpr double maxTorque = 5;
+            static constexpr double maxThrust = 60;
+
+            static constexpr double maxDroneAngle = 30;
+            static constexpr double maxDroneVel = 2;
+
+            static constexpr double maxPayloadVel = 20;
+
+            static constexpr double maxAnglePayload = 10;
+
+            // Angle of cable from vertical
+            static constexpr double maxTheta = 30;
+            static constexpr double maxThetaVel = 5;
+
+            double solveTime = 3.0;
+
+
+
+
 
             control::ODESolverPtr odeSolver;          // ODE solver for the system
         };
     }
 }
+
+class PayloadPositionGoal : public ompl::base::GoalRegion
+{
+public:
+    PayloadPositionGoal(const ompl::base::SpaceInformationPtr &si, const Eigen::Vector3d &goalPosition)
+        : ompl::base::GoalRegion(si), goalPosition_(goalPosition)
+    {
+        setThreshold(0.5); // Define an acceptable goal threshold
+    }
+
+    // Compute the distance based only on the payload position
+    virtual double distanceGoal(const ompl::base::State *st) const override
+    {
+        const auto *compoundState = st->as<ompl::base::CompoundState>();
+        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+
+        Eigen::Vector3d payloadPos(payloadState->getX(), payloadState->getY(), payloadState->getZ());
+
+        return (payloadPos - goalPosition_).norm();
+    }
+
+private:
+    Eigen::Vector3d goalPosition_;
+};
 
 #endif // OMPL_APP_PAYLOAD_SYSTEM_H
