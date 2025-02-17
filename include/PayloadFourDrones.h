@@ -6,9 +6,23 @@
 #include <vector>
 #include <omplapp/apps/AppBase.h>
 #include <ompl/control/ODESolver.h>
-#include <ompl/control/spaces/RealVectorControlSpace.h>  // Include the correct header for RealVectorControlSpace
-#include <ompl/base/spaces/SE3StateSpace.h>  // Include the correct header for SE3StateSpace
+#include <ompl/control/spaces/RealVectorControlSpace.h> 
+#include <ompl/base/spaces/SE3StateSpace.h>
 #include <ompl/base/goals/GoalRegion.h>
+#include <ompl/control/planners/rrt/RRT.h>
+#include <ompl/base/terminationconditions/IterationTerminationCondition.h>
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <boost/numeric/odeint.hpp>
+
+#include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/objectives/ControlDurationObjective.h>
+#include <ompl/base/objectives/MinimaxObjective.h>
+#include <ompl/base/objectives/MechanicalWorkOptimizationObjective.h>
+#include <ompl/control/planners/sst/SST.h>
+
 
 namespace ompl
 {
@@ -28,12 +42,16 @@ namespace ompl
             /** \brief Segmentation fault otherwise */
             void inferProblemDefinitionBounds() override {}
 
-            /** \brief Get the number of drones in the system */
             unsigned int getRobotCount() const override { return droneCount_; }
+            double getPayloadWidth() const { return w; }
+            double getPayloadDepth() const { return d; }
+            double getPayloadHeight() const { return h; }
+            double getCableLength() const { return l; }
+
 
             /** \brief Get the solve time for the system */
             double getSolveTime() const { return solveTime; }
-
+            
             /** \brief Get the default start state for the system */
             base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
 
@@ -48,51 +66,6 @@ namespace ompl
 
             /** \brief Set default bounds for the state and control spaces */
             virtual void setDefaultBounds();
-
-            /** \brief Get the inverse mass for each drone */
-            const std::vector<double>& getMassInv() const;
-
-            /** \brief Set the inverse mass for each drone */
-            void setMassInv(const std::vector<double>& massInv);
-
-            /** \brief Get the damping coefficients for each drone */
-            const std::vector<double>& getBeta() const;
-
-            /** \brief Set the damping coefficients for each drone */
-            void setBeta(const std::vector<double>& beta);
-
-            /** \brief Get the mass of the payload */
-            double getPayloadMass() const { return m_payload; }
-
-            /** \brief Set the mass of the payload */
-            void setPayloadMass(double mass) { m_payload = mass; }
-
-            /** \brief Get the mass of the drones */
-            double getDroneMass() const { return m_drone; }
-
-            /** \brief Set the mass of the drones */
-            void setDroneMass(double mass) { m_drone = mass; }
-
-            /** \brief Get the inertia tensor of the payload */
-            const Eigen::Matrix3d& getPayloadInertia() const;
-
-            /** \brief Set the inertia tensor of the payload */
-            void setPayloadInertia(const Eigen::Matrix3d& inertia);
-
-            /** \brief Get the dimensions of the payload (a, b) */
-            const Eigen::Vector2d& getPayloadDimensions() const;
-
-            /** \brief Set the dimensions of the payload (a, b) */
-            void setPayloadDimensions(const Eigen::Vector2d& dimensions);
-
-            /** \brief Get the length of the cable */
-            double getCableLength() const { return l; }
-
-            /** \brief Set the length of the cable */
-            void setCableLength(double length) { l = length; }
-
-            // /** \brief Get the position of a payload corner in the local frame */
-            // Eigen::Vector3d getPayloadCorner(unsigned int index) const;
 
         protected:
             /** \brief Compute the state derivative for the system */
@@ -110,10 +83,10 @@ namespace ompl
             /** \brief Construct the state space for the system */
             static base::StateSpacePtr constructStateSpace();
 
+
+
             static unsigned int droneCount_;          // Number of drones in the system
             double timeStep_{1e-2};                   // Time step for integration
-
-            unsigned int iterationNumber_; // Track the iteration count
 
             double m_payload = 5.0;                   // Mass of the payload
             double m_drone = 1.0;                     // Mass of each drone
@@ -122,7 +95,7 @@ namespace ompl
             double d = 2.0;                           // Payload depth
             double h = 1.0;                           // Payload height
 
-            double l = 1;                 // Length of the cables
+            double l = 1;                             // Length of the cables
 
             Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.01; // Example: uniform inertia
 
@@ -141,45 +114,101 @@ namespace ompl
             static constexpr double maxAnglePayload = 10;
             static constexpr double maxPayloadVel = 20;
 
-
-
             // Angle of cable from vertical
             static constexpr double maxTheta = 30;
             static constexpr double maxThetaVel = 5;
 
-            double solveTime = 60.0;
-
-
-
-
+            double solveTime = 18000.0;
 
             control::ODESolverPtr odeSolver;          // ODE solver for the system
+
+            RigidBodyGeometry rigidBody_;  // Stores mesh and collision checking
         };
     }
 }
 
-class PayloadPositionGoal : public ompl::base::GoalRegion
+class PayloadStateValidityChecker : public ompl::base::StateValidityChecker
 {
 public:
-    PayloadPositionGoal(const ompl::base::SpaceInformationPtr &si, const Eigen::Vector3d &goalPosition)
-        : ompl::base::GoalRegion(si), goalPosition_(goalPosition)
+    PayloadStateValidityChecker(const ompl::base::SpaceInformationPtr &si, ompl::app::RigidBodyGeometry &rigidBody, const ompl::app::PayloadSystem &system)
+        : ompl::base::StateValidityChecker(si), rigidBody_(rigidBody), system_(system), validityChecker_(rigidBody.allocStateValidityChecker(si, nullptr, false))
     {
-        setThreshold(0.5); // Define an acceptable goal threshold
     }
 
-    // Compute the distance based only on the payload position
-    virtual double distanceGoal(const ompl::base::State *st) const override
+    bool isValid(const ompl::base::State *state) const override
     {
-        const auto *compoundState = st->as<ompl::base::CompoundState>();
+        // Use the allocated state validity checker to check for obstacles
+        if (!validityChecker_->isValid(state))
+        {
+            return false; // Collision detected
+        }
+
+        const auto *compoundState = state->as<ompl::base::CompoundState>();
         const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
 
         Eigen::Vector3d payloadPos(payloadState->getX(), payloadState->getY(), payloadState->getZ());
+        Eigen::Quaterniond payloadRot(payloadState->rotation().w,
+                                      payloadState->rotation().x,
+                                      payloadState->rotation().y,
+                                      payloadState->rotation().z);
 
-        return (payloadPos - goalPosition_).norm();
+        // Get payload dimensions (w, d, h) and cable length (l)
+        double w = system_.getPayloadWidth();
+        double d = system_.getPayloadDepth();
+        double h = system_.getPayloadHeight();
+        double l = system_.getCableLength();
+
+        // Compute quadrotor positions
+        for (unsigned int i = 0; i < system_.getRobotCount(); ++i)
+        {
+            unsigned int baseIndex = 2 + i * 3;
+            double theta = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[0];
+            double phi = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[1];
+
+            Eigen::Vector3d cableDir = Eigen::Vector3d(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+
+            Eigen::Vector3d corner;
+            switch (i)
+            {
+            case 0:
+                corner = Eigen::Vector3d(-w / 2, -d / 2, h / 2);
+                break;
+            case 1:
+                corner = Eigen::Vector3d(w / 2, -d / 2, h / 2);
+                break;
+            case 2:
+                corner = Eigen::Vector3d(w / 2, d / 2, h / 2);
+                break;
+            case 3:
+                corner = Eigen::Vector3d(-w / 2, d / 2, h / 2);
+                break;
+            }
+
+            Eigen::Vector3d quadrotorPos = payloadPos + payloadRot * (corner + l * cableDir);
+
+            // Construct a temporary SE3 state for the quadrotor position
+            auto quadrotorSE3 = si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->allocState();
+            auto *quadrotorSE3State = quadrotorSE3->as<ompl::base::SE3StateSpace::StateType>();
+            quadrotorSE3State->setXYZ(quadrotorPos.x(), quadrotorPos.y(), quadrotorPos.z());
+
+            // Check if the quadrotor collides with obstacles
+            if (!validityChecker_->isValid(quadrotorSE3))
+            {
+                si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->freeState(quadrotorSE3);
+                return false; // Collision detected
+            }
+
+            si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->freeState(quadrotorSE3);
+        }
+
+        return true; // State is valid if no collisions are found
     }
 
 private:
-    Eigen::Vector3d goalPosition_;
+    ompl::app::RigidBodyGeometry &rigidBody_;
+    const ompl::app::PayloadSystem &system_;
+    ompl::base::StateValidityCheckerPtr validityChecker_;
 };
 
 #endif // OMPL_APP_PAYLOAD_SYSTEM_H
+

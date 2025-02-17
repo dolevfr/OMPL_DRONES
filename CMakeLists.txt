@@ -15,24 +15,28 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/other_stuff
 )
 
+# Find Boost Filesystem (Required for mesh paths)
+find_package(Boost REQUIRED COMPONENTS filesystem system)
+include_directories(${Boost_INCLUDE_DIRS})
+
 # Find Python and link to Python libraries
 find_package(Python3 COMPONENTS Development NumPy REQUIRED)
 include_directories(${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS})
 
-# Find pybind11 and link it to relevant targets
-find_package(pybind11 REQUIRED)
+# Add the executable for PayloadFourDronesDemo
+add_executable(PayloadFourDrones src/PayloadFourDemo.cpp src/PayloadFourDrones.cpp)
+target_link_libraries(PayloadFourDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base Boost::filesystem Boost::system)
+
+# # Find pybind11 and link it to relevant targets
+# find_package(pybind11 REQUIRED)
 
 # # Add the executable for QuadrotorDemo
 # add_executable(QuadrotorDemo other_stuff/QuadrotorDemo.cpp other_stuff/QuadrotorPlanning.cpp)
 # target_link_libraries(QuadrotorDemo PRIVATE ompl ompl_app ompl_app_base Python3::Python Python3::NumPy)
 
-# Add the executable for PayloadTwoDronesDemo
-add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
-target_link_libraries(PayloadTwoDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base)
-
-# Add the executable for PayloadTwoDronesDemo
-add_executable(PayloadFourDrones src/PayloadFourDemo.cpp src/PayloadFourDrones.cpp)
-target_link_libraries(PayloadFourDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base)
+# # Add the executable for PayloadTwoDronesDemo
+# add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
+# target_link_libraries(PayloadTwoDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base)
 
 # Set build type to Debug for debugging purposes
 set(CMAKE_BUILD_TYPE Debug)

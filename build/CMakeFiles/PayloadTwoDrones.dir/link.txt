@@ -1,1 +1,0 @@
-/usr/bin/c++ -g CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDemo.cpp.o CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.o -o PayloadTwoDrones  -lstdc++fs -lompl -lompl_app -lompl_app_base 

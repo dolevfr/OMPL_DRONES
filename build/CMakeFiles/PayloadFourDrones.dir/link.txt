@@ -1,1 +1,1 @@
-/usr/bin/c++ -g CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDemo.cpp.o CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.o -o PayloadFourDrones  -lstdc++fs -lompl -lompl_app -lompl_app_base 
+/usr/bin/c++ -g CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDemo.cpp.o CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.o -o PayloadFourDrones  -lstdc++fs -lompl -lompl_app -lompl_app_base /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.74.0 /usr/lib/x86_64-linux-gnu/libboost_system.so.1.74.0 

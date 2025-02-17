@@ -11,16 +11,16 @@
 /* Author: Mark Moll (adapted for 4 drones) */
 
 #include "PayloadFourDrones.h"
-#include <boost/numeric/odeint.hpp>
-#include <boost/numeric/odeint/stepper/runge_kutta_cash_karp54.hpp>
-#include <boost/numeric/odeint/stepper/controlled_runge_kutta.hpp>
 
 unsigned int ompl::app::PayloadSystem::droneCount_ = 4; // Default number of drones
 
 using StepperType = boost::numeric::odeint::runge_kutta_cash_karp54<std::vector<double>>;
 
+#include <boost/filesystem.hpp>
+
 ompl::app::PayloadSystem::PayloadSystem()
-    : AppBase<AppType::CONTROL>(constructControlSpace(), Motion_3D), iterationNumber_(0)
+    : AppBase<AppType::CONTROL>(constructControlSpace(), Motion_3D), 
+      rigidBody_(ompl::app::MotionModel::Motion_3D, ompl::app::CollisionChecker::FCL)
 {
     // Set the stepper for the ODE solver
     odeSolver = std::make_shared<ompl::control::ODEAdaptiveSolver<StepperType>>(
@@ -44,10 +44,21 @@ ompl::app::PayloadSystem::PayloadSystem()
                                                                        postPropagate(state, control, duration, result);
                                                                    }));
 
-    // Environment and robot meshes
-    // setEnvironmentMesh("/usr/local/share/ompl/resources/3D/Twistycool_env.dae");
-    setRobotMesh("/usr/local/share/ompl/resources/3D/quadrotor.dae");
+    // Load Environment and Robot Meshes
+    std::string meshDir = boost::filesystem::absolute("../src/meshes").string();
+    rigidBody_.setMeshPath({boost::filesystem::path(meshDir)});
+
+    rigidBody_.setEnvironmentMesh(meshDir + "/base_env.dae");
+    rigidBody_.setRobotMesh(meshDir + "/box.dae");
+    
+    for (unsigned int i = 0; i < getRobotCount(); ++i)
+        rigidBody_.addRobotMesh(meshDir + "/drone.dae");
+
+    // Set the state validity checker
+    si_->setStateValidityChecker(
+        std::make_shared<PayloadStateValidityChecker>(si_, rigidBody_, *this));
 }
+
 
 ompl::base::ScopedState<> ompl::app::PayloadSystem::getFullStateFromGeometricComponent(
     const base::ScopedState<> &state) const
@@ -77,18 +88,18 @@ ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
     stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
 
     // Add RealVector state space for the payload's velocity (6 dimensions)
-    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.3);
+    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.01);
 
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
         // Add SO3 state space for  orientation
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 1.0);
+        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.01);
 
         // Add RealVector state space for velocity (3 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.3);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.01);
 
         // Add RealVector state space for cable angles and velocities (4 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.1);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.01);
     }
 
     stateSpace->lock();
@@ -224,20 +235,20 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         Eigen::Vector3d payloadZDir = payloadRot * Eigen::Vector3d(0, 0, 1); // z-direction in the payload's local frame
 
         // Determine the corner position of the payload
-        Eigen::Vector3d forceDirection;
+        Eigen::Vector3d corner;
         switch (i)
         {
         case 0:
-            forceDirection = Eigen::Vector3d(-w / 2, -d / 2, h / 2);
+            corner = Eigen::Vector3d(-w / 2, -d / 2, h / 2);
             break;
         case 1:
-            forceDirection = Eigen::Vector3d(w / 2, -d / 2, h / 2);
+            corner = Eigen::Vector3d(w / 2, -d / 2, h / 2);
             break;
         case 2:
-            forceDirection = Eigen::Vector3d(w / 2, d / 2, h / 2);
+            corner = Eigen::Vector3d(w / 2, d / 2, h / 2);
             break;
         case 3:
-            forceDirection = Eigen::Vector3d(-w / 2, d / 2, h / 2);
+            corner = Eigen::Vector3d(-w / 2, d / 2, h / 2);
             break;
         default:
             throw std::runtime_error("Invalid drone index");
@@ -245,7 +256,7 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
 
         // Update forces and torques
         payloadForce += thrustOnCable; // Thrust force on the payload
-        payloadTorque += forceDirection.cross(thrustOnCable); // Torque on the payload
+        payloadTorque += corner.cross(thrustOnCable); // Torque on the payload
     }
 
     Eigen::Matrix4d Omega;
@@ -434,8 +445,8 @@ void ompl::app::PayloadSystem::setDefaultBounds()
 {
     // Enforce payload position bounds (-300, 600) for x, y, z
     base::RealVectorBounds positionBounds(3); // SE3 position bounds
-    positionBounds.setLow(-300);
-    positionBounds.setHigh(600);
+    positionBounds.setLow(-1000);
+    positionBounds.setHigh(1000);
     getStateSpace()->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(0)->setBounds(positionBounds);
 
     // Enforce payload velocity bounds (-10, 10) for x, y, z, and angular velocities

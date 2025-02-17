@@ -10,23 +10,16 @@
 
 /* Author: Mark Moll (adapted for 4 drones) */
 
-#include <ompl/control/planners/rrt/RRT.h>
-#include <omplapp/config.h>
-#include <ompl/base/terminationconditions/IterationTerminationCondition.h>
-#include <ompl/base/spaces/SE3StateSpace.h>
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-
 #include "PayloadFourDrones.h"
 
 using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
+    // Set the start and goal states
     base::StateSpacePtr stateSpace(setup.getStateSpace());
     base::ScopedState<base::CompoundStateSpace> start(stateSpace);
-    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
+    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(-10.0, 0.0, 10.0);
     start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
     {
@@ -46,7 +39,7 @@ void payloadSystemSetup(app::PayloadSystem &setup)
         }
     }
     base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
-    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(150.0, 125.0, -150.0);
+    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(10.0, 0.0, 10.0);
     goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
     {
@@ -68,45 +61,8 @@ void payloadSystemSetup(app::PayloadSystem &setup)
 
     setup.setStartAndGoalStates(start, goal);
 
-    // // Retrieve the state space
-    // ompl::base::StateSpacePtr stateSpace = setup.getStateSpace();
-
-    // // Define the payload goal position
-    // Eigen::Vector3d goalPosition(150.0, 125.0, -150.0);
-
-    // // Create a goal based only on payload position
-    // auto goal = std::make_shared<PayloadPositionGoal>(setup.getSpaceInformation(), goalPosition);
-
-    // // Set the goal in the planning setup
-    // setup.setGoal(goal);
-
-    // // Create the start state
-    // ompl::base::ScopedState<ompl::base::CompoundStateSpace> start(stateSpace);
-    // start->as<ompl::base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
-    // start->as<ompl::base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-
-    // for (unsigned int i = 0; i < 6; ++i)
-    // {
-    //     start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
-    // }
-
-    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
-    // {
-    //     unsigned int baseIndex = 2 + i * 3;
-    //     start->as<ompl::base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
-    //     for (unsigned int j = 0; j < 3; ++j)
-    //     {
-    //         start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
-    //     }
-    //     for (unsigned int j = 0; j < 4; ++j)
-    //     {
-    //         start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
-    //     }
-    // }
-
-    // // Set start state
-    // setup.setStartState(start);
 }
+
 
 
 
@@ -114,10 +70,29 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 {
     std::cout << "\n\n***** Planning for a " << setup.getName() << " *****\n" << std::endl;
 
-    // Set up the planner
-    auto planner = std::make_shared<control::RRT>(setup.getSpaceInformation());
-    planner->setGoalBias(0.05); // Example: Adjust goal bias
+    // // Set up the planner
+    // auto planner = std::make_shared<control::RRT>(setup.getSpaceInformation());
+    // planner->setGoalBias(0.1); // Example: Adjust goal bias
+    // setup.setPlanner(planner);
+
+    auto objective = std::make_shared<ompl::base::PathLengthOptimizationObjective>(setup.getSpaceInformation());
+
+    // Set the optimization objective in the problem definition
+    setup.getProblemDefinition()->setOptimizationObjective(objective);
+
+    auto planner = std::make_shared<ompl::control::SST>(setup.getSpaceInformation());
+    planner->setGoalBias(0.05);
+    planner->setSelectionRadius(0.1);  // Adjust for faster convergence
+    planner->setPruningRadius(0.2);    // Helps control sparsity
+
+    // Attach the problem definition with the optimization objective to the planner
+    planner->setProblemDefinition(setup.getProblemDefinition());
+    planner->setup();
+
     setup.setPlanner(planner);
+
+
+
 
     // // Open file for writing and ensure it works
     // std::ofstream outFile("solution_path.txt", std::ios::out | std::ios::trunc);
@@ -194,8 +169,8 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     if (setup.solve(setup.getSolveTime()))
     {
         std::cout << "Planning completed successfully.\n";
-        control::PathControl &path(setup.getSolutionPath());
-        path.printAsMatrix(std::cout); // Optionally print the solution matrix
+        // control::PathControl &path(setup.getSolutionPath());
+        // path.printAsMatrix(std::cout); // Optionally print the solution matrix
 
         if (!setup.haveExactSolutionPath())
         {
@@ -228,5 +203,8 @@ int main(int argc, char ** /*unused*/)
     path.printAsMatrix(outFile); // Save the solution matrix to the file
     outFile.close();
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_3D.py");
+    // system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_3D.py");
+
+    system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
+    system("python3 ../src/python/ompl_app_multiple.py ");
 }

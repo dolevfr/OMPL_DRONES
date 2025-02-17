@@ -555,7 +555,6 @@ CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.o: \
  /usr/include/assimp/Importer.hpp /usr/include/boost/filesystem.hpp \
  /usr/include/boost/filesystem/config.hpp \
  /usr/include/boost/system/api_config.hpp \
- /usr/include/boost/config/auto_link.hpp \
  /usr/include/boost/filesystem/path.hpp /usr/include/boost/assert.hpp \
  /usr/include/boost/filesystem/path_traits.hpp \
  /usr/include/boost/type_traits/decay.hpp \
@@ -1665,6 +1664,13 @@ CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.o: \
  /usr/local/include/ompl-1.6/ompl/base/spaces/SE3StateSpace.h \
  /usr/local/include/ompl-1.6/ompl/base/spaces/RealVectorStateSpace.h \
  /usr/local/include/ompl-1.6/ompl/base/spaces/SO3StateSpace.h \
+ /usr/local/include/ompl-1.6/ompl/control/planners/rrt/RRT.h \
+ /usr/local/include/ompl-1.6/ompl/control/planners/PlannerIncludes.h \
+ /usr/local/include/ompl-1.6/ompl/datastructures/NearestNeighbors.h \
+ /usr/local/include/ompl-1.6/ompl/base/terminationconditions/IterationTerminationCondition.h \
+ /usr/include/c++/11/filesystem /usr/include/c++/11/bits/fs_fwd.h \
+ /usr/include/c++/11/bits/fs_path.h /usr/include/c++/11/codecvt \
+ /usr/include/c++/11/bits/fs_dir.h /usr/include/c++/11/bits/fs_ops.h \
  /usr/include/boost/numeric/odeint.hpp \
  /usr/include/boost/numeric/odeint/version.hpp \
  /usr/include/boost/numeric/odeint/util/ublas_wrapper.hpp \
@@ -1916,4 +1922,9 @@ CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.o: \
  /usr/include/boost/numeric/odeint/iterator/adaptive_time_iterator.hpp \
  /usr/include/boost/numeric/odeint/iterator/const_step_iterator.hpp \
  /usr/include/boost/numeric/odeint/iterator/impl/const_step_iterator_impl.hpp \
- /usr/include/boost/numeric/odeint/iterator/const_step_time_iterator.hpp
+ /usr/include/boost/numeric/odeint/iterator/const_step_time_iterator.hpp \
+ /usr/local/include/ompl-1.6/ompl/base/objectives/PathLengthOptimizationObjective.h \
+ /usr/local/include/ompl-1.6/ompl/base/objectives/ControlDurationObjective.h \
+ /usr/local/include/ompl-1.6/ompl/base/objectives/MinimaxObjective.h \
+ /usr/local/include/ompl-1.6/ompl/base/objectives/MechanicalWorkOptimizationObjective.h \
+ /usr/local/include/ompl-1.6/ompl/control/planners/sst/SST.h

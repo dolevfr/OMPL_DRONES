@@ -10,7 +10,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     # return
 
     # Determine the number of drones based on the number of columns
-    num_drones = (data.shape[1] - 13) // 10  # 13 columns for payload (SE3 + velocity), 10 per drone
+    num_drones = (data.shape[1] - 13) // 11  # 13 columns for payload (SE3 + velocity), 11 per drone
     print(f"System contains payload and {num_drones} drones.")
 
     # Number of points to plot
@@ -39,11 +39,11 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     all_z.append(payload_z)
 
     # Plot the start position
-    start_x, start_y, start_z = 125, 125, -150
+    start_x, start_y, start_z = -10, 0, 10
     ax.scatter(start_x, start_y, start_z, label="Start", color='c', s=100, marker='*')
 
     # Plot the goal position
-    goal_x, goal_y, goal_z = 150, 125, -150
+    goal_x, goal_y, goal_z = 10, 0, 10
     ax.scatter(goal_x, goal_y, goal_z, label="Goal", color='m', s=100, marker='*')
 
     # ax.scatter(payload_x, payload_y, payload_z, label="Payload", color='b', s=50)

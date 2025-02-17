@@ -117,19 +117,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named PayloadTwoDrones
-
-# Build rule for target.
-PayloadTwoDrones: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 PayloadTwoDrones
-.PHONY : PayloadTwoDrones
-
-# fast build rule for target.
-PayloadTwoDrones/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/build
-.PHONY : PayloadTwoDrones/fast
-
-#=============================================================================
 # Target rules for targets named PayloadFourDrones
 
 # Build rule for target.
@@ -190,54 +177,6 @@ src/PayloadFourDrones.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadFourDrones.dir/build.make CMakeFiles/PayloadFourDrones.dir/src/PayloadFourDrones.cpp.s
 .PHONY : src/PayloadFourDrones.cpp.s
 
-src/PayloadTwoDemo.o: src/PayloadTwoDemo.cpp.o
-.PHONY : src/PayloadTwoDemo.o
-
-# target to build an object file
-src/PayloadTwoDemo.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDemo.cpp.o
-.PHONY : src/PayloadTwoDemo.cpp.o
-
-src/PayloadTwoDemo.i: src/PayloadTwoDemo.cpp.i
-.PHONY : src/PayloadTwoDemo.i
-
-# target to preprocess a source file
-src/PayloadTwoDemo.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDemo.cpp.i
-.PHONY : src/PayloadTwoDemo.cpp.i
-
-src/PayloadTwoDemo.s: src/PayloadTwoDemo.cpp.s
-.PHONY : src/PayloadTwoDemo.s
-
-# target to generate assembly for a file
-src/PayloadTwoDemo.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDemo.cpp.s
-.PHONY : src/PayloadTwoDemo.cpp.s
-
-src/PayloadTwoDrones.o: src/PayloadTwoDrones.cpp.o
-.PHONY : src/PayloadTwoDrones.o
-
-# target to build an object file
-src/PayloadTwoDrones.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.o
-.PHONY : src/PayloadTwoDrones.cpp.o
-
-src/PayloadTwoDrones.i: src/PayloadTwoDrones.cpp.i
-.PHONY : src/PayloadTwoDrones.i
-
-# target to preprocess a source file
-src/PayloadTwoDrones.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.i
-.PHONY : src/PayloadTwoDrones.cpp.i
-
-src/PayloadTwoDrones.s: src/PayloadTwoDrones.cpp.s
-.PHONY : src/PayloadTwoDrones.s
-
-# target to generate assembly for a file
-src/PayloadTwoDrones.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/PayloadTwoDrones.dir/build.make CMakeFiles/PayloadTwoDrones.dir/src/PayloadTwoDrones.cpp.s
-.PHONY : src/PayloadTwoDrones.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -247,19 +186,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... PayloadFourDrones"
-	@echo "... PayloadTwoDrones"
 	@echo "... src/PayloadFourDemo.o"
 	@echo "... src/PayloadFourDemo.i"
 	@echo "... src/PayloadFourDemo.s"
 	@echo "... src/PayloadFourDrones.o"
 	@echo "... src/PayloadFourDrones.i"
 	@echo "... src/PayloadFourDrones.s"
-	@echo "... src/PayloadTwoDemo.o"
-	@echo "... src/PayloadTwoDemo.i"
-	@echo "... src/PayloadTwoDemo.s"
-	@echo "... src/PayloadTwoDrones.o"
-	@echo "... src/PayloadTwoDrones.i"
-	@echo "... src/PayloadTwoDrones.s"
 .PHONY : help
 
 
