@@ -48,15 +48,21 @@ ompl::app::PayloadSystem::PayloadSystem()
     std::string meshDir = boost::filesystem::absolute("../src/meshes").string();
     rigidBody_.setMeshPath({boost::filesystem::path(meshDir)});
 
-    rigidBody_.setEnvironmentMesh(meshDir + "/base_env.dae");
+    rigidBody_.setEnvironmentMesh(meshDir + "/env_3.dae");
     rigidBody_.setRobotMesh(meshDir + "/box.dae");
-    
+
     for (unsigned int i = 0; i < getRobotCount(); ++i)
         rigidBody_.addRobotMesh(meshDir + "/drone.dae");
 
-    // Set the state validity checker
+    // Set the state validity checker using our custom PayloadStateValidityChecker
     si_->setStateValidityChecker(
         std::make_shared<PayloadStateValidityChecker>(si_, rigidBody_, *this));
+
+    // IMPORTANT: Set a finer state validity checking resolution (e.g., 3% of maximum extent)
+    si_->setStateValidityCheckingResolution(0.03);
+
+    si_->setup();
+
 }
 
 
@@ -88,18 +94,18 @@ ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
     stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
 
     // Add RealVector state space for the payload's velocity (6 dimensions)
-    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.01);
+    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.02);
 
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
         // Add SO3 state space for  orientation
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.01);
+        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.02);
 
         // Add RealVector state space for velocity (3 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.01);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.02);
 
         // Add RealVector state space for cable angles and velocities (4 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.01);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.02);
     }
 
     stateSpace->lock();
@@ -390,55 +396,7 @@ void ompl::app::PayloadSystem::postPropagate(const base::State * /*state*/, cons
             phi -= 2 * M_PI; // Subtract 2π until phi is within range
     }
 
-    // // Print control values
-    // const double *controlValues = static_cast<const ompl::control::RealVectorControlSpace::ControlType *>(control)->values;
-    // std::ostringstream stateStream;
-    // stateStream << "Control: [";
-    // for (unsigned int i = 0; i < droneCount_ * 4; ++i) // Assuming 4 control inputs per drone
-    //     stateStream << controlValues[i] << " ";
-    // stateStream << "]\n";
 
-    // // Print payload position, quaternion, and velocity
-    // stateStream << "Payload Position: ["
-    //             << payloadSE3State.getX() << ", " << payloadSE3State.getY() << ", " << payloadSE3State.getZ() << "] ";
-    // stateStream << "Quaternion: ["
-    //             << payloadSE3State.rotation().x << ", " << payloadSE3State.rotation().y << ", "
-    //             << payloadSE3State.rotation().z << ", " << payloadSE3State.rotation().w << "] ";
-
-    // const auto *payloadVel = compoundState->components[1]->as<ompl::base::RealVectorStateSpace::StateType>();
-    // stateStream << "Payload Velocity: ["
-    //             << payloadVel->values[0] << ", " << payloadVel->values[1] << ", " << payloadVel->values[2] << "]\n";
-
-    // // Print drone and cable states with velocities
-    // unsigned int startIndex = 2; // Start index after payload's SE3 state and velocity
-    // for (unsigned int i = 0; i < droneCount_; ++i)
-    // {
-    //     // Drone quaternion
-    //     auto *droneQuat = compoundState->components[startIndex + 3 * i]
-    //                         ->as<ompl::base::SO3StateSpace::StateType>();
-    //     stateStream << "Drone " << i << " Quaternion: ["
-    //                 << droneQuat->x << ", " << droneQuat->y << ", "
-    //                 << droneQuat->z << ", " << droneQuat->w << "] ";
-
-    //     // Drone velocity
-    //     auto *droneVel = compoundState->components[startIndex + 3 * i + 1]
-    //                         ->as<ompl::base::RealVectorStateSpace::StateType>();
-    //     stateStream << "Drone " << i << " Velocity: ["
-    //                 << droneVel->values[0] << ", " << droneVel->values[1] << ", " << droneVel->values[2] << "] ";
-
-    //     // Cable angles
-    //     auto *cableAngles = compoundState->components[startIndex + 3 * i + 2]
-    //                             ->as<ompl::base::RealVectorStateSpace::StateType>();
-    //     stateStream << "Cable " << i << " Spherical Coordinates (theta, phi): ["
-    //                 << cableAngles->values[0] << ", " << cableAngles->values[1] << "]\n";
-
-    //     // Cable velocities
-    //     stateStream << "Cable " << i << " Velocities (theta_dot, phi_dot): ["
-    //                 << cableAngles->values[2] << ", " << cableAngles->values[3] << "]\n";
-    // }
-
-    // std::cout << "Post-Propagation State:\n" << stateStream.str();
-    // std::cout << stateStream.str();
 }
 
 void ompl::app::PayloadSystem::setDefaultBounds()
