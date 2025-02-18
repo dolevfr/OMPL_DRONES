@@ -37,20 +37,16 @@ except ImportError:
         # next try PyQt4
         # (deprecated, will be removed at some point)
         USE_DEPRECATED_API = True
-        try:
-            from PyQt4 import QtGui, QtCore, QtGui, QtOpenGL
-            from PyQt4.QtCore import pyqtSignal as Signal
-        except ImportError:
-            # finally try PySide
-            from PySide import QtCore, QtGui, QtOpenGL
-            from PySide.QtCore import Signal
+        # try:
+        #     from PyQt4 import QtGui, QtCore, QtGui, QtOpenGL
+        #     from PyQt4.QtCore import pyqtSignal as Signal
+        # except ImportError:
+        #     # finally try PySide
+        #     from PySide import QtCore, QtGui, QtOpenGL
+        #     from PySide.QtCore import Signal
         QtWidets = QtGui
 
-# The ConfigParser module has been renamed to configparser in Python 3.0
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
+import configparser as ConfigParser
 
 sys.path.insert(0, join(dirname(dirname(abspath(__file__))), 'ompl/py-bindings'))
 from ompl.util import OutputHandler, useOutputHandler, LogLevel, \
