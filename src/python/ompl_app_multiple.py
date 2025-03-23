@@ -164,7 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def openEnvironment(self):
         # Always load the fixed environment mesh.
-        fname = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/env_3.dae"
+        fname = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/empty_env.dae"
         # print("Loading environment mesh from:", fname)
         self.environmentFile = fname
         self.omplSetup.setEnvironmentMesh(self.environmentFile)
@@ -1087,52 +1087,58 @@ class GLViewer(QtOpenGL.QGLWidget):
         GL.glScalef(self.scale, self.scale, self.scale)
         GL.glTranslatef(-self.center[0], -self.center[1], -self.center[2])
 
-        # Draw bounding box
+        # Draw bounding box if available
         if self.bounds_low:
             self.drawBounds()
 
         # Draw multiple robots along their respective paths
         if self.solutionPaths:
             for robot_idx, robotPath in enumerate(self.solutionPaths):
-                if not robotPath:
+                if not robotPath or len(robotPath) == 0:
                     continue
-                path_length = len(robotPath)
-                if path_length == 0:
-                    continue
-                index = self.pathIndex % path_length
-                state_transform = robotPath[index]
-                GL.glPushMatrix()
-                GL.glMultMatrixf(state_transform)
-                if robot_idx == 0:
-                    # print("Drawing robot_box with list id:", self.robot_box)
-                    GL.glCallList(self.robot_box)
+
+                if self.animate:
+                    # Show only the current state for animation
+                    index = self.pathIndex % len(robotPath)
+                    state_transform = robotPath[index]
+                    GL.glPushMatrix()
+                    GL.glMultMatrixf(state_transform)
+                    if robot_idx == 0:
+                        GL.glCallList(self.robot_box)
+                    else:
+                        GL.glCallList(self.robot_drone)
+                    GL.glPopMatrix()
                 else:
-                    # print("Drawing robot_drone with list id:", self.robot_drone)
-                    GL.glCallList(self.robot_drone)
-                GL.glPopMatrix()
+                    # Show all states simultaneously
+                    n = len(robotPath)
+                    nmax = 20
+                    if n < nmax:
+                        indices = range(n)
+                    else:
+                        step = float(n - 1) / float(nmax - 1)
+                        indices = [int(step * i) for i in range(nmax)]
+                    for idx in indices:
+                        state_transform = robotPath[idx]
+                        GL.glPushMatrix()
+                        GL.glMultMatrixf(state_transform)
+                        if robot_idx == 0:
+                            GL.glCallList(self.robot_box)
+                        else:
+                            GL.glCallList(self.robot_drone)
+                        GL.glPopMatrix()
 
         # Draw environment
         if self.environment:
-            # print("Drawing environment with list id:", self.environment)
             GL.glCallList(self.environment)
 
         # Draw planner data (if any)
         if self.drawPlannerData and self.plannerDataList:
             GL.glCallList(self.drawPlannerData + self.plannerDataList - 1)
 
-        # (Remove any extra glPopMatrix() if not balanced)
-
-
-
-        # Draw environment
-        if self.environment:
-            GL.glCallList(self.environment)
-
-        # Draw planner data
-        if self.drawPlannerData and self.plannerDataList:
-            GL.glCallList(self.drawPlannerData + self.plannerDataList - 1)
-
+        # Ensure proper matrix stack balancing
         GL.glPopMatrix()
+
+
 
 
     def resizeGL(self, width, height):

@@ -10,18 +10,18 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     # return
 
     # Determine the number of drones based on the number of columns
-    num_drones = (data.shape[1] - 13) // 11  # 13 columns for payload (SE3 + velocity), 11 per drone
+    num_drones = 4  # 13 columns for payload (SE3 + velocity), 11 per drone
     print(f"System contains payload and {num_drones} drones.")
 
-    # Number of points to plot
+    # Number of states to plot
     to_plot = 50
 
-    # Randomly select points if there are too many
+    # Randomly select states if there are too many
     if data.shape[0] > to_plot:
         indices = np.random.choice(data.shape[0], to_plot, replace=False)
         data = data[indices]
 
-    # data = data[0:1]
+    # data = data[-1:]
 
     # Create a scatter plot for the payload and each drone's trajectory
     fig = plt.figure()
@@ -43,7 +43,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     ax.scatter(start_x, start_y, start_z, label="Start", color='c', s=100, marker='*')
 
     # Plot the goal position
-    goal_x, goal_y, goal_z = 10, 0, 10
+    goal_x, goal_y, goal_z = 0, 0, 30
     ax.scatter(goal_x, goal_y, goal_z, label="Goal", color='m', s=100, marker='*')
 
     # ax.scatter(payload_x, payload_y, payload_z, label="Payload", color='b', s=50)
@@ -93,8 +93,8 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
 
         for j, cable_origin in enumerate(cable_origins):
             # Cable angles (theta, phi)
-            theta = data[i, 12 + j * 11 + 8]
-            phi = data[i, 12 + j * 11 + 9]
+            theta = data[i, 13 + j * 11 + 7]
+            phi = data[i, 13 + j * 11 + 8]
 
             # Convert spherical coordinates to Cartesian
             cable_x = l * np.sin(theta) * np.cos(phi)
@@ -125,12 +125,23 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
                 [-drone_scale, -drone_scale, 0]   # Close the square
             ]) * l  # Scale the drone's square size based on `l`
 
-            drone_idx = 12 + j * 11
+            drone_idx = 13 + j * 11
 
             if np.linalg.norm([data[i, drone_idx], data[i, drone_idx + 1], data[i, drone_idx + 2], data[i, drone_idx + 3]]) > 1e-8:
+                # Compute the drone's rotation matrix from quaternion
                 drone_rotation = R.from_quat([data[i, drone_idx], data[i, drone_idx + 1], data[i, drone_idx + 2], data[i, drone_idx + 3]]).as_matrix()
+                
+                # Transform the local square to global coordinates
                 drone_square_global = (drone_rotation @ drone_square_local.T).T + cable_end
                 ax.plot(drone_square_global[:, 0], drone_square_global[:, 1], drone_square_global[:, 2], color='orange', linewidth=1.5)
+
+                # Compute the thrust direction (normal to the square, in the drone's local z-direction)
+                thrust_dir = drone_rotation @ np.array([0, 0, 1])  # Global thrust direction
+
+                # Plot an arrow representing the thrust direction
+                ax.quiver(cable_end[0], cable_end[1], cable_end[2],  # Arrow start position
+                        thrust_dir[0], thrust_dir[1], thrust_dir[2],  # Arrow direction
+                        color='green', length=0.3, normalize=True, linewidth=2)
             else:
                 continue
 

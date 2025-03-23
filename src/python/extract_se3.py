@@ -5,7 +5,7 @@ import sys
 
 # Parameters (adjust as needed)
 w, d, h = 2.0, 2.0, 1.0   # payload dimensions
-l = 1.0                   # cable length
+l = 2.0                   # cable length
 
 def compute_se3_line(state):
     # Payload SE(3) (position: indices 0-2, quaternion: indices 3-6)

@@ -10,7 +10,7 @@
 
 /* Author: Mark Moll */
 
-#include "omplapp/apps/QuadrotorPlanning.h"
+#include "QuadrotorPlanning.h"
 
 ompl::base::ScopedState<> ompl::app::QuadrotorPlanning::getDefaultStartState() const
 {
@@ -26,7 +26,6 @@ ompl::base::ScopedState<> ompl::app::QuadrotorPlanning::getDefaultStartState() c
 ompl::base::ScopedState<> ompl::app::QuadrotorPlanning::getFullStateFromGeometricComponent(
     const base::ScopedState<> &state) const
 {
-    std::cout << "getFullStateFromGeometricComponent\n";
     base::ScopedState<> s(getStateSpace());
     std::vector <double> reals = state.reals ();
 
@@ -70,29 +69,14 @@ void ompl::app::QuadrotorPlanning::ode(const control::ODESolver::StateType& q, c
     // the z-axis of the body frame in world coordinates is equal to
     // (2(wy+xz), 2(yz-wx), w^2-x^2-y^2+z^2).
     // This can be easily verified by working out q * (0,0,1).
-    qdot[7] = massInv_ * (-2*u[0]*(q[6]*q[4] + q[3]*q[5]) - beta_ * q[7]);
-    qdot[8] = massInv_ * (-2*u[0]*(q[4]*q[5] - q[6]*q[3]) - beta_ * q[8]);
-    qdot[9] = massInv_ * (  -u[0]*(q[6]*q[6]-q[3]*q[3]-q[4]*q[4]+q[5]*q[5]) - beta_ * q[9]) - 9.81;
+    qdot[7] = massInv_ * (2*u[0]*(q[6]*q[4] + q[3]*q[5]) - beta_ * q[7]);
+    qdot[8] = massInv_ * (2*u[0]*(q[4]*q[5] - q[6]*q[3]) - beta_ * q[8]);
+    qdot[9] = massInv_ * (  u[0]*(q[6]*q[6]-q[3]*q[3]-q[4]*q[4]+q[5]*q[5]) - beta_ * q[9]) - 9.81;
 
     // derivative of rotational velocity
     qdot[10] = u[1];
     qdot[11] = u[2];
     qdot[12] = u[3];
-
-    // Print the state (q) and its derivative (qdot)
-    std::cout << "State (q): ";
-    for (const auto &val : q)
-    {
-        std::cout << val << " ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "State derivative (qdot): ";
-    for (const auto &val : qdot)
-    {
-        std::cout << val << " ";
-    }
-    std::cout << std::endl;
 }
 
 void ompl::app::QuadrotorPlanning::postPropagate(const base::State* /*state*/, const control::Control* /*control*/, const double /*duration*/, base::State* result)
@@ -126,9 +110,9 @@ void ompl::app::QuadrotorPlanning::setDefaultBounds()
     velbounds.setLow(-1);
     velbounds.setHigh(1);
     getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velbounds);
-    controlbounds.setLow(-1);
-    controlbounds.setHigh(1);
-    controlbounds.setLow(0, 5.);
+    controlbounds.setLow(-0.3);
+    controlbounds.setHigh(0.3);
+    controlbounds.setLow(0, 0.);
     controlbounds.setHigh(0, 15.);
     getControlSpace()->as<control::RealVectorControlSpace>()->setBounds(controlbounds);
 }

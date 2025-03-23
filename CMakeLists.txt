@@ -15,17 +15,42 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/other_stuff
 )
 
-# Find Boost Filesystem (Required for mesh paths)
-find_package(Boost REQUIRED COMPONENTS filesystem system)
+# Find Boost (Filesystem, System, Serialization)
+find_package(Boost REQUIRED COMPONENTS filesystem system serialization)
 include_directories(${Boost_INCLUDE_DIRS})
 
-# Find Python and link to Python libraries
-find_package(Python3 COMPONENTS Development NumPy REQUIRED)
+# Find Python3 with Development and NumPy
+find_package(Python3 REQUIRED COMPONENTS Development NumPy)
 include_directories(${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS})
 
-# Add the executable for PayloadFourDronesDemo
+# Find OMPL and OMPL.app
+find_package(ompl REQUIRED)
+
+# Add your executable
 add_executable(PayloadFourDrones src/PayloadFourDemo.cpp src/PayloadFourDrones.cpp)
-target_link_libraries(PayloadFourDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base Boost::filesystem Boost::system)
+
+# Link required libraries explicitly and clearly
+target_link_libraries(PayloadFourDrones PRIVATE
+    ompl
+    ompl_app
+    ompl_app_base
+    Boost::filesystem
+    Boost::system
+    Boost::serialization  # added explicitly to solve linker errors
+    Python3::Python
+    Python3::NumPy
+    stdc++fs
+)
+
+# Include directories clearly
+target_include_directories(PayloadFourDrones PRIVATE
+    ${OMPL_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+    ${Python3_INCLUDE_DIRS}
+    ${Python3_NumPy_INCLUDE_DIRS}
+    include
+)
+
 
 # # Find pybind11 and link it to relevant targets
 # find_package(pybind11 REQUIRED)

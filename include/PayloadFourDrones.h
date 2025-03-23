@@ -1,27 +1,43 @@
 #ifndef OMPL_APP_PAYLOAD_SYSTEM_H
 #define OMPL_APP_PAYLOAD_SYSTEM_H
 
-
+#include <boost/numeric/odeint.hpp>
+#include <boost/filesystem.hpp>
+#include <chrono>
 #include <Eigen/Dense>
-#include <vector>
-#include <omplapp/apps/AppBase.h>
-#include <ompl/control/ODESolver.h>
-#include <ompl/control/spaces/RealVectorControlSpace.h> 
-#include <ompl/base/spaces/SE3StateSpace.h>
-#include <ompl/base/goals/GoalRegion.h>
-#include <ompl/control/planners/rrt/RRT.h>
-#include <ompl/base/terminationconditions/IterationTerminationCondition.h>
-#include <iostream>
 #include <fstream>
 #include <filesystem>
-#include <boost/numeric/odeint.hpp>
+#include <iostream>
 
-#include <ompl/base/OptimizationObjective.h>
-#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/DiscreteMotionValidator.h>
+#include <ompl/base/goals/GoalRegion.h>
+
 #include <ompl/base/objectives/ControlDurationObjective.h>
-#include <ompl/base/objectives/MinimaxObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/objectives/MechanicalWorkOptimizationObjective.h>
+#include <ompl/base/objectives/MinimaxObjective.h>
+#include <ompl/base/OptimizationObjective.h>
+
+#include <ompl/base/spaces/SE3StateSpace.h>
+#include <ompl/base/terminationconditions/IterationTerminationCondition.h>
+
+#include <ompl/control/DirectedControlSampler.h>
+#include <ompl/control/PlannerData.h>
+#include <ompl/control/PlannerDataStorage.h>
+#include <ompl/control/ODESolver.h>
+#include <ompl/control/PathControl.h>
+#include <ompl/control/planners/rrt/RRT.h>
 #include <ompl/control/planners/sst/SST.h>
+#include <ompl/control/SpaceInformation.h>
+#include <ompl/control/spaces/RealVectorControlSpace.h> 
+
+#include <omplapp/apps/AppBase.h>
+
+#include <random>
+#include <vector>
+
+
+
 
 
 namespace ompl
@@ -42,21 +58,46 @@ namespace ompl
             /** \brief Segmentation fault otherwise */
             void inferProblemDefinitionBounds() override {}
 
-            unsigned int getRobotCount() const override { return droneCount_; }
+            double getDroneMass() const { return m_drone; }
+            double getPayloadMass() const { return m_payload; }
+
             double getPayloadWidth() const { return w; }
             double getPayloadDepth() const { return d; }
             double getPayloadHeight() const { return h; }
             double getCableLength() const { return l; }
 
+            unsigned int getRobotCount() const override { return droneCount_; }
+            double getMaxTorquePitchRoll() const { return maxTorquePitchRoll; }
+            double getMaxTorqueYaw() const { return maxTorqueYaw; }
+            double getMinThrust() const { return minThrust; }
+            double getMaxThrust() const { return maxThrust; }
+
 
             /** \brief Get the solve time for the system */
             double getSolveTime() const { return solveTime; }
+
+            bool getPrintAllStates() const { return printAllStates; }
+
+            bool getUseSST() const { return useSST; }
+
+            double getMaxDroneAngle() const { return maxDroneAngle; }
+            double getMaxAnglePayload() const { return maxAnglePayload; }
             
             /** \brief Get the default start state for the system */
-            base::ScopedState<> getDefaultStartState() const override { return base::ScopedState<>(getStateSpace()); }
+            base::ScopedState<> getDefaultStartState() const override; 
 
             /** \brief Extract the full state from the geometric component */
-            base::ScopedState<> getFullStateFromGeometricComponent(const base::ScopedState<> &state) const override;
+            ompl::base::ScopedState<> getFullStateFromGeometricComponent(
+                const base::ScopedState<> &state) const override
+            {
+                base::ScopedState<> s(getStateSpace());
+                std::vector <double> reals = state.reals ();
+            
+                s = 0.0;
+                for (size_t i = 0; i < reals.size (); ++i)
+                    s[i] = reals[i];
+                return s;
+            }
 
             /** \brief Get the geometric component's state space */
             const base::StateSpacePtr& getGeometricComponentStateSpace() const override
@@ -64,8 +105,16 @@ namespace ompl
                 return getStateSpace()->as<base::CompoundStateSpace>()->getSubspace(0);
             }
 
+            /** \brief Get the geometric component state for internal use */
+            const base::State* getGeometricComponentStateInternal(const base::State* state, unsigned int /*index*/) const override
+            {
+                return state->as<base::CompoundState>()->components[0];
+            }
+
             /** \brief Set default bounds for the state and control spaces */
             virtual void setDefaultBounds();
+
+            friend class PayloadStateValidityChecker;
 
         protected:
             /** \brief Compute the state derivative for the system */
@@ -74,51 +123,63 @@ namespace ompl
             /** \brief Post-processing after propagating the system state */
             virtual void postPropagate(const base::State* state, const control::Control* control, double duration, base::State* result);
 
-            /** \brief Get the geometric component state for internal use */
-            const base::State* getGeometricComponentStateInternal(const base::State* state, unsigned int index) const override;
-
             /** \brief Construct the control space for the system */
-            static control::ControlSpacePtr constructControlSpace();
+            control::ControlSpacePtr constructControlSpace();
 
             /** \brief Construct the state space for the system */
             static base::StateSpacePtr constructStateSpace();
 
-
-
             static unsigned int droneCount_;          // Number of drones in the system
-            double timeStep_{1e-2};                   // Time step for integration
+            double timeStep_{0.01};                   // Time step for integration
 
-            double m_payload = 5.0;                   // Mass of the payload
-            double m_drone = 1.0;                     // Mass of each drone
+            double m_payload = 2.0;                   // Mass of the payload
+            double m_drone = 0.25;                     // Mass of each drone
 
             double w = 2.0;                           // Payload width
             double d = 2.0;                           // Payload depth
             double h = 1.0;                           // Payload height
 
-            double l = 1;                             // Length of the cables
+            double l = 2;                             // Length of the cables
 
-            Eigen::Matrix3d droneInertia = Eigen::Matrix3d::Identity() * 0.01; // Example: uniform inertia
+            double droneH = 0.02;                      // Height of the drone
+            double droneR = 0.2;                      // Radius of the drone
+
+            Eigen::Matrix3d droneInertia = (Eigen::Matrix3d() << 
+                (1.0 / 12.0) * m_drone * (3 * droneR * droneR + droneH * droneH), 0, 0,
+                0, (1.0 / 12.0) * m_drone * (3 * droneR * droneR + droneH * droneH), 0,
+                0, 0, (1.0 / 2.0) * m_drone * droneR * droneR).finished();
+
 
             Eigen::Matrix3d payloadInertia = (Eigen::Matrix3d() << 
                 (1.0 / 12.0) * m_payload * (h * h + d * d), 0, 0,
                 0, (1.0 / 12.0) * m_payload * (w * w + h * h), 0,
                 0, 0, (1.0 / 12.0) * m_payload * (w * w + d * d)).finished();
 
-            // Inputs of drones
-            static constexpr double maxTorque = 0.1;
-            static constexpr double maxThrust = 30;
 
-            static constexpr double maxDroneAngle = 30;
-            static constexpr double maxDroneVel = 2;
+            double droneBeta = 0.0;                   // Example: Torque damping coefficient
+
+
+            // Inputs of drones
+            static constexpr double maxTorquePitchRoll = 0.05;
+            static constexpr double maxTorqueYaw = 0.05;
+            static constexpr double minThrust = 0;
+            static constexpr double maxThrust = 25;
+
+            static constexpr double maxDroneAngle = 40;
+            static constexpr double maxDroneVel = 20;
             
-            static constexpr double maxAnglePayload = 10;
-            static constexpr double maxPayloadVel = 20;
+            static constexpr double maxAnglePayload = 35;
+            static constexpr double maxPayloadVel = 1;
 
             // Angle of cable from vertical
-            static constexpr double maxTheta = 30;
-            static constexpr double maxThetaVel = 5;
+            static constexpr double maxTheta = 20;
+            static constexpr double maxThetaVel = 20;
 
-            double solveTime = 30;
+            double solveTime = 60 * 3;   
+            
+            bool printAllStates = true; // Print all states to file
+            
+            bool useSST = false; // true -> SST, false -> RRT
 
             control::ODESolverPtr odeSolver;          // ODE solver for the system
 
@@ -127,114 +188,245 @@ namespace ompl
     }
 }
 
-class PayloadStateValidityChecker : public ompl::base::StateValidityChecker
+
+
+
+
+class PayloadSystemValidityChecker : public ompl::base::StateValidityChecker
 {
 public:
-    PayloadStateValidityChecker(const ompl::base::SpaceInformationPtr &si,
-                                ompl::app::RigidBodyGeometry &rigidBody,
-                                const ompl::app::PayloadSystem &system)
-        : ompl::base::StateValidityChecker(si),
-          rigidBody_(rigidBody),
-          system_(system),
-          validityChecker_(rigidBody.allocStateValidityChecker(si, nullptr, false))
-    {
-    }
+    PayloadSystemValidityChecker(const ompl::base::SpaceInformationPtr &si, const ompl::app::PayloadSystem &system)
+        : ompl::base::StateValidityChecker(si), payloadSystem_(system)
+    {}
 
     bool isValid(const ompl::base::State *state) const override
     {
-        // Check the entire state for collisions using the allocated validity checker.
-        // (This typically checks the payload and the robots as a whole.)
-        if (!validityChecker_->isValid(state))
+        static int payloadExceeded = 0;
+        static int droneExceeded = 0;
+        static int validStates = 0;
+
+        // --- Collision Check ---
+        // Clone the state and enforce bounds
+        ompl::base::State *correctedState = si_->cloneState(state);
+        si_->getStateSpace()->enforceBounds(correctedState);
+        si_->freeState(correctedState);
+    
+        // --- Custom Tilt Constraint Check ---
+        const auto *compoundState = state->as<ompl::base::CompoundState>();
+        if (!compoundState)
         {
+            std::cerr << "State is not a CompoundState!" << std::endl;
             return false;
         }
-
-        // Our compound state layout is:
-        // [0] → Payload state (SE3: 7 components)
-        // [1] → Payload velocities (6 components)
-        // [2..] → For each drone: 11 components:
-        //         [0-3]: Drone rotation (SO(3) quaternion)
-        //         [4-6]: Drone angular velocity
-        //         [7-8]: Cable angles (theta and phi)
-        //         [9-10]: Derivatives of cable angles
-
-        const auto *compoundState = state->as<ompl::base::CompoundState>();
-
-        // Get payload SE3 state (index 0).
-        const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
-        Eigen::Vector3d payloadPos(payloadState->getX(), payloadState->getY(), payloadState->getZ());
-        Eigen::Quaterniond payloadRot(payloadState->rotation().w,
-                                      payloadState->rotation().x,
-                                      payloadState->rotation().y,
-                                      payloadState->rotation().z);
-
-        // Payload geometry parameters.
-        double w = system_.getPayloadWidth();
-        double d = system_.getPayloadDepth();
-        double h = system_.getPayloadHeight();
-        double l = system_.getCableLength();
-
-        // For each drone, compute the corresponding quadrotor position.
-        for (unsigned int i = 0; i < system_.getRobotCount(); ++i)
+        
+        // Payload tilt check:
+        const auto *payloadSE3State = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+        Eigen::Quaterniond payloadQuat(
+            payloadSE3State->rotation().w,
+            payloadSE3State->rotation().x,
+            payloadSE3State->rotation().y,
+            payloadSE3State->rotation().z);
+        payloadQuat.normalize(); // Ensure normalization
+    
+        Eigen::Vector3d payloadUp = payloadQuat * Eigen::Vector3d::UnitZ();
+        double payloadTilt = std::acos( std::clamp(payloadUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0) );
+        if (payloadTilt > (payloadSystem_.getMaxAnglePayload() * M_PI / 180.0))
         {
-            // Drone states start at compound state index 2, each drone occupies one slot.
-            unsigned int droneSubstateIndex = 2 + i;
-            const auto *droneState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(droneSubstateIndex);
-
-            // Extract cable angles: indices 7 (theta) and 8 (phi) in the drone’s 11-D substate.
-            double theta = droneState->values[7];
-            double phi   = droneState->values[8];
-
-            // Compute cable direction.
-            Eigen::Vector3d cableDir(sin(theta) * cos(phi),
-                                     sin(theta) * sin(phi),
-                                     cos(theta));
-
-            // Determine the appropriate payload corner for the drone.
-            Eigen::Vector3d corner;
-            switch (i)
+            // std::cout << "Number of payload tilt exceed: " << ++payloadExceeded << std::endl;
+            return false;
+        }
+        
+        // Drone tilt check (assuming 4 drones):
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            unsigned int droneBaseIndex = 2 + i * 3; // Make sure this index is correct
+            const auto *droneSO3State = compoundState->as<ompl::base::SO3StateSpace::StateType>(droneBaseIndex);
+            Eigen::Quaterniond droneQuat(
+                droneSO3State->w,
+                droneSO3State->x,
+                droneSO3State->y,
+                droneSO3State->z);
+            droneQuat.normalize(); // Normalize the drone quaternion
+    
+            Eigen::Vector3d droneUp = droneQuat * Eigen::Vector3d::UnitZ();
+            double droneTilt = std::acos( std::clamp(droneUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0) );
+            if (droneTilt > (payloadSystem_.getMaxDroneAngle() * M_PI / 180.0))
             {
-                case 0:  corner = Eigen::Vector3d(-w / 2, -d / 2, h / 2); break;
-                case 1:  corner = Eigen::Vector3d( w / 2, -d / 2, h / 2); break;
-                case 2:  corner = Eigen::Vector3d( w / 2,  d / 2, h / 2); break;
-                case 3:  corner = Eigen::Vector3d(-w / 2,  d / 2, h / 2); break;
-                default: corner = Eigen::Vector3d(0, 0, 0); break;
-            }
-
-            // Compute the quadrotor’s global position.
-            Eigen::Vector3d quadrotorPos = payloadPos + payloadRot * (corner + l * cableDir);
-
-            // Allocate a temporary SE3 state for the drone.
-            auto quadrotorSE3 = si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->allocState();
-            auto *quadrotorSE3State = quadrotorSE3->as<ompl::base::SE3StateSpace::StateType>();
-
-            // Set the computed position.
-            quadrotorSE3State->setXYZ(quadrotorPos.x(), quadrotorPos.y(), quadrotorPos.z());
-            // Optionally, set the orientation. For example, if the drone collision geometry
-            // should be aligned with the payload or identity, do so here.
-            // Here, we set the identity rotation. Replace if a different orientation is desired.
-            quadrotorSE3State->rotation().x = 0.0;
-            quadrotorSE3State->rotation().y = 0.0;
-            quadrotorSE3State->rotation().z = 0.0;
-            quadrotorSE3State->rotation().w = 1.0;
-
-            // Check for collision for this quadrotor state.
-            if (!validityChecker_->isValid(quadrotorSE3))
-            {
-                si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->freeState(quadrotorSE3);
+                // std::cout << "Number of drone tilt exceed: " << ++droneExceeded << std::endl;
                 return false;
             }
-            si_->getStateSpace()->as<ompl::base::SE3StateSpace>()->freeState(quadrotorSE3);
+        }
+        
+        // std::cout << "Number of valid states: " << ++validStates << std::endl;
+        return true;
+    }
+    
+    
+
+private:
+    const ompl::app::PayloadSystem &payloadSystem_; // Reference to PayloadSystem
+};
+
+
+
+class PayloadSmoothDirectedControlSampler : public ompl::control::DirectedControlSampler
+{
+public:
+    PayloadSmoothDirectedControlSampler(const ompl::control::SpaceInformation *si,
+                                        const ompl::app::PayloadSystem *payloadSystem)
+        : DirectedControlSampler(si), siC_(si), payloadSystem_(payloadSystem),
+        plannerData_(nullptr),
+        rng_(std::random_device{}()), normalDist_(0.0, 1.0)
+    {
+        droneCount_ = payloadSystem_->getRobotCount();
+        maxTorquePitchRoll_ = payloadSystem_->getMaxTorquePitchRoll();
+        maxTorqueYaw_ = payloadSystem_->getMaxTorqueYaw();
+        minThrust_ = payloadSystem_->getMinThrust();
+        maxThrust_ = payloadSystem_->getMaxThrust();
+
+        // Standard deviations for control inputs
+        thrustStd_ = 0.05;
+        torquePitchRollStd_ = 0.001;
+        torqueYawStd_ = 0.0001;
+        sameControls_ = true;
+    }
+
+    void setPlannerData(const ompl::control::PlannerData &plannerData)
+    {
+        plannerData_ = &plannerData; // safely store pointer/reference
+    }
+
+    unsigned int sampleTo(ompl::control::Control *control,
+                          const ompl::base::State *source,
+                          ompl::base::State *dest) override
+    {
+        // Explicitly detect the initial state
+        if (siC_->getStateSpace()->equalStates(source, payloadSystem_->getDefaultStartState().get()))
+        {
+            // Clearly set initial hover thrust and zero torques
+            double hoverThrust = (payloadSystem_->getDroneMass() +
+                                  payloadSystem_->getPayloadMass() / payloadSystem_->getRobotCount()) * 9.81;
+
+            double *vals = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+            for (unsigned int i = 0; i < payloadSystem_->getRobotCount(); ++i)
+            {
+                unsigned int idx = i * 4;
+                vals[idx] = hoverThrust;
+                vals[idx + 1] = 0.0;
+                vals[idx + 2] = 0.0;
+                vals[idx + 3] = 0.0;
+            }
+        }
+        else
+        {
+            const ompl::control::Control *parentControl = getControlFromPlannerData(source);
+            if (!parentControl)
+            {
+                // Fallback if parent control is somehow missing
+                siC_->allocControlSampler()->sample(control);
+            }
+            else
+            {
+                sampleAroundPrevious(control, parentControl);
+            }
         }
 
-        return true;
+        return siC_->propagateWhileValid(source, control, siC_->getMinControlDuration(), dest);
+    }
+
+
+
+    unsigned int sampleTo(ompl::control::Control *control,
+                          const ompl::control::Control *,
+                          const ompl::base::State *source,
+                          ompl::base::State *dest) override
+    {
+        return sampleTo(control, source, dest);
     }
 
 private:
-    ompl::app::RigidBodyGeometry &rigidBody_;
-    const ompl::app::PayloadSystem &system_;
-    ompl::base::StateValidityCheckerPtr validityChecker_;
+    const ompl::control::SpaceInformation *siC_;
+    const ompl::app::PayloadSystem *payloadSystem_; // clearly defined pointer to PayloadSystem
+    const ompl::control::PlannerData *plannerData_; // just store pointer!
+
+    unsigned int droneCount_;
+    double thrustStd_, torquePitchRollStd_, torqueYawStd_;
+    double maxTorquePitchRoll_, maxTorqueYaw_, minThrust_, maxThrust_;
+    bool sameControls_;
+
+    std::mt19937 rng_;
+    std::normal_distribution<double> normalDist_;
+
+    double clamp(double val, double minVal, double maxVal) const
+    {
+        return std::max(minVal, std::min(val, maxVal));
+    }
+
+    void sampleAroundPrevious(ompl::control::Control *control, const ompl::control::Control *prevControl)
+    {
+        const double *prevVals = prevControl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+        double *newControlVals = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+
+        if (!sameControls_)
+        {
+            for (unsigned int i = 0; i < droneCount_; ++i)
+            {
+                unsigned int idx = i * 4;
+                newControlVals[idx] = clamp(prevVals[idx] + thrustStd_ * normalDist_(rng_), minThrust_, maxThrust_);
+                newControlVals[idx + 1] = clamp(prevVals[idx + 1] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
+                newControlVals[idx + 2] = clamp(prevVals[idx + 2] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
+                newControlVals[idx + 3] = clamp(prevVals[idx + 3] + torqueYawStd_ * normalDist_(rng_), -maxTorqueYaw_, maxTorqueYaw_);
+            }
+        }
+
+        else
+        {
+            // Sample once around previous values
+            double sampledThrust = clamp(prevVals[0] + thrustStd_ * normalDist_(rng_), minThrust_, maxThrust_);
+            double sampledTorqueRoll = clamp(prevVals[1] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
+            double sampledTorquePitch = clamp(prevVals[2] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
+            double sampledTorqueYaw = clamp(prevVals[3] + torqueYawStd_ * normalDist_(rng_), -maxTorqueYaw_, maxTorqueYaw_);
+
+            // Apply this identical control to all drones
+            for (unsigned int i = 0; i < droneCount_; ++i)
+            {
+                unsigned int idx = i * 4;
+                newControlVals[idx]     = sampledThrust;
+                newControlVals[idx + 1] = sampledTorqueRoll;
+                newControlVals[idx + 2] = sampledTorquePitch;
+                newControlVals[idx + 3] = sampledTorqueYaw;
+            }
+        }
+    }
+
+    const ompl::control::Control *getControlFromPlannerData(const ompl::base::State *state)
+    {
+        if (!plannerData_)
+            return nullptr;
+
+        for (unsigned int i = 0; i < plannerData_->numVertices(); ++i)
+        {
+            if (siC_->getStateSpace()->equalStates(plannerData_->getVertex(i).getState(), state))
+            {
+                std::vector<unsigned int> incomingEdges;
+                plannerData_->getIncomingEdges(i, incomingEdges);
+                if (!incomingEdges.empty())
+                {
+                    const ompl::base::PlannerDataEdge *baseEdge = &plannerData_->getEdge(incomingEdges[0], i);
+
+                    const auto edge =
+                        dynamic_cast<const ompl::control::PlannerDataEdgeControl *>(baseEdge);
+
+                    if (edge)
+                        return edge->getControl();
+                }
+            }
+        }
+        return nullptr;
+    }
 };
+
+  
 
 #endif // OMPL_APP_PAYLOAD_SYSTEM_H
 
