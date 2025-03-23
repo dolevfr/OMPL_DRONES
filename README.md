@@ -19,9 +19,9 @@ OMPL_drones/
 ## Prerequisites
 
 ### Libraries
-- **OMPL** (Tested with OMPL 1.6.0)
-- **Boost** (numeric/odeint and filesystem components)
-- **Eigen3**
+- [**OMPL**](https://ompl.kavrakilab.org/) (Tested with [OMPL 1.6.0](https://github.com/ompl/ompl/releases/tag/1.6.0))
+- [**Boost**](https://www.boost.org/) (numeric/[odeint](https://www.boost.org/doc/libs/release/libs/numeric/odeint/) and [filesystem](https://www.boost.org/doc/libs/release/libs/filesystem/) components)
+- [**Eigen3**](https://eigen.tuxfamily.org/)
 
 ### Install Dependencies on Ubuntu
 ```bash
