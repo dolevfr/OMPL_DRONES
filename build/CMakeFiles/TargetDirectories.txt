@@ -1,3 +1,0 @@
-/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles/PayloadFourDrones.dir
-/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles/edit_cache.dir
-/home/dolev/Desktop/Research/OMPL_drones/build/CMakeFiles/rebuild_cache.dir
