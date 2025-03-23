@@ -3,19 +3,6 @@
 ## Overview
 This repository provides a motion planning setup using **OMPL (Open Motion Planning Library)** to coordinate multiple drones carrying a payload suspended by cables. The primary planner implemented is the kinodynamic RRT for a system consisting of 4 drones.
 
-## Project Structure
-```
-OMPL_drones/
-├── build               # (generated) Build directory
-├── include             # Header files
-├── src                 # Source code files
-├── other_stuff         # Additional resources
-├── CMakeLists.txt      # CMake configuration file
-└── README.md           # Project description and instructions
-```
-
-**Note:** The `build` directory is not included when cloning; you must create it manually.
-
 ## Prerequisites
 
 ### Libraries
