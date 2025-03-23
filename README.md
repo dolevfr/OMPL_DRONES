@@ -1,4 +1,4 @@
-# OMPL Drones – Multi-Drone Payload Motion Planning
+# Multi-Drone Payload Motion Planning with OMPL
 
 ## Overview
 This repository provides a motion planning setup using **OMPL (Open Motion Planning Library)** to coordinate multiple drones carrying a payload suspended by cables. The primary planner implemented is the kinodynamic RRT for a system consisting of 4 drones.
