@@ -38,7 +38,7 @@ sudo apt-get install libompl-dev libboost-all-dev libeigen3-dev cmake build-esse
 
 Clone this repository and navigate to its root:
 ```bash
-git clone <your_repository_url>
+git clone https://github.com/dolevfr/OMPL_DRONES.git
 cd OMPL_drones
 ```
 
