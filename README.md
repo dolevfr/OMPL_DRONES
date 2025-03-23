@@ -10,12 +10,6 @@ This repository provides a motion planning setup using **OMPL (Open Motion Plann
 - [**Boost**](https://www.boost.org/) (numeric/[odeint](https://www.boost.org/doc/libs/release/libs/numeric/odeint/) and [filesystem](https://www.boost.org/doc/libs/release/libs/filesystem/) components)
 - [**Eigen3**](https://eigen.tuxfamily.org/)
 
-### Install Dependencies on Ubuntu
-```bash
-sudo apt-get update
-sudo apt-get install libompl-dev libboost-all-dev libeigen3-dev cmake build-essential
-```
-
 ### Optional Python dependencies for visualization:
 - Python 3
 - Matplotlib (`pip install matplotlib`)
