@@ -56,9 +56,8 @@ ompl::app::PayloadSystem::PayloadSystem()
 ompl::base::ScopedState<> ompl::app::PayloadSystem::getDefaultStartState() const
 {
     base::ScopedState<base::SE3StateSpace> s(getGeometricComponentStateSpace());
-    aiVector3D c = getRobotCenter(0);
 
-    s->setXYZ(c.x, c.y, c.z);
+    s->setXYZ(PayloadSystem::startPosition_.x(), PayloadSystem::startPosition_.y(), PayloadSystem::startPosition_.z());
     s->rotation().setIdentity();
     return getFullStateFromGeometricComponent(s);
 }
@@ -131,17 +130,17 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
     // Initialize qdot
     qdot.resize(q.size(), 0);
 
-    // Access the control values
-    const double *u_copy = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+    const double *u = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
 
-    std::vector<double> u = {
-        u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-        u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-        u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-        u_copy[0], u_copy[1], u_copy[2], u_copy[3]
-    };
+    // // Access the control values
+    // const double *u_copy = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
 
-    // const double *u = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+    // std::vector<double> u = {
+    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
+    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
+    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
+    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3]
+    // };
 
     unsigned int droneStateSize = 11; // State size per drone and cable
     unsigned int droneIndex = 13;     // Start index for drones
@@ -188,28 +187,18 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         double forceTheta = droneForce.dot(thetaDir);
         double forcePhi = droneForce.dot(phiDir);
 
-        // Construct Omega(omega) matrix
-        Eigen::Matrix4d Omega;
-        Omega << 0, -omega.x(), -omega.y(), -omega.z(),
-            omega.x(), 0, omega.z(), -omega.y(),
-            omega.y(), -omega.z(), 0, omega.x(),
-            omega.z(), omega.y(), -omega.x(), 0;
-
-        // Convert quaternion to 4D vector
-        Eigen::Vector4d quatVec(droneRot.w(), droneRot.x(), droneRot.y(), droneRot.z());
-
-        // Compute quaternion derivative
-        Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
+        Eigen::Quaterniond omega_quat(0, omega.x(), omega.y(), omega.z());
+        Eigen::Quaterniond q_dot = Eigen::Quaterniond(0.5 * omega_quat.coeffs()) * droneRot;
 
         // Angular acceleration calculation
         Eigen::Vector3d torque(u[i * 4 + 1], u[i * 4 + 2], u[i * 4 + 3]); // Control inputs for torques
         Eigen::Vector3d angularAccel = droneInertia.inverse() * (torque - droneBeta * omega);
 
         // Update qdot for quaternion
-        qdot[baseIndex + 0] = quatDot.x();
-        qdot[baseIndex + 1] = quatDot.y();
-        qdot[baseIndex + 2] = quatDot.z();
-        qdot[baseIndex + 3] = quatDot.w();
+        qdot[baseIndex + 0] = q_dot.x();
+        qdot[baseIndex + 1] = q_dot.y();
+        qdot[baseIndex + 2] = q_dot.z();
+        qdot[baseIndex + 3] = q_dot.w();
 
         // Update qdot for angular accelerations
         qdot[baseIndex + 4] = angularAccel.x();
@@ -222,50 +211,39 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         qdot[baseIndex + 9] = forceTheta / (l * m_drone);
         qdot[baseIndex + 10] = forcePhi / (l * m_drone);
 
-        // Calculate the rotated directions of the payload
-        Eigen::Vector3d payloadXDir = payloadRot * Eigen::Vector3d(1, 0, 0); // x-direction in the payload's local frame
-        Eigen::Vector3d payloadYDir = payloadRot * Eigen::Vector3d(0, 1, 0); // y-direction in the payload's local frame
-        Eigen::Vector3d payloadZDir = payloadRot * Eigen::Vector3d(0, 0, 1); // z-direction in the payload's local frame
-
-        // Determine the corner position of the payload
-        Eigen::Vector3d corner;
+        // corner in payload local coordinates
+        Eigen::Vector3d cornerLocal;
         switch (i)
         {
         case 0:
-            corner = Eigen::Vector3d(-w / 2, -d / 2, h / 2);
+            cornerLocal = Eigen::Vector3d(-w / 2, -d / 2, h / 2);
             break;
         case 1:
-            corner = Eigen::Vector3d(w / 2, -d / 2, h / 2);
+            cornerLocal = Eigen::Vector3d(w / 2, -d / 2, h / 2);
             break;
         case 2:
-            corner = Eigen::Vector3d(w / 2, d / 2, h / 2);
+            cornerLocal = Eigen::Vector3d(w / 2, d / 2, h / 2);
             break;
         case 3:
-            corner = Eigen::Vector3d(-w / 2, d / 2, h / 2);
+            cornerLocal = Eigen::Vector3d(-w / 2, d / 2, h / 2);
             break;
         default:
             throw std::runtime_error("Invalid drone index");
         }
 
-        // Update forces and torques
-        payloadForce += forceOnCable; // Thrust force on the payload
-        payloadTorque += corner.cross(forceOnCable); // Torque on the payload
+        // Rotate corner to world frame using payload rotation
+        Eigen::Vector3d cornerWorld = payloadRot * cornerLocal;
+
+        // Update forces and torques correctly in world frame
+        payloadForce += forceOnCable;
+        payloadTorque += cornerWorld.cross(forceOnCable);
     }
 
-    Eigen::Matrix4d Omega;
-    Omega << 0, -payloadAngVel.x(), -payloadAngVel.y(), -payloadAngVel.z(),
-        payloadAngVel.x(), 0, payloadAngVel.z(), -payloadAngVel.y(),
-        payloadAngVel.y(), -payloadAngVel.z(), 0, payloadAngVel.x(),
-        payloadAngVel.z(), payloadAngVel.y(), -payloadAngVel.x(), 0;
-
-    // Convert quaternion to 4D vector
-    Eigen::Vector4d quatVec(payloadRot.w(), payloadRot.x(), payloadRot.y(), payloadRot.z());
-
-    // Compute quaternion derivative
-    Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
+    Eigen::Quaterniond omega_quat_p(0, payloadAngVel.x(), payloadAngVel.y(), payloadAngVel.z());
+    Eigen::Quaterniond q_dot_p = Eigen::Quaterniond(0.5 * omega_quat_p.coeffs()) * payloadRot;
 
     // Payload linear and angular acceleration
-    Eigen::Vector3d payloadAccel = payloadForce / m_payload;
+    Eigen::Vector3d payloadAccel = (payloadForce - payloadBeta * payloadVel) / m_payload;
     Eigen::Vector3d payloadAngAccel = payloadInertia.inverse() * payloadTorque;
 
     // Update qdot for payload indices
@@ -273,10 +251,10 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
     qdot[1] = payloadVel.y();
     qdot[2] = payloadVel.z();
 
-    qdot[3] = quatDot.x();
-    qdot[4] = quatDot.y();
-    qdot[5] = quatDot.z();
-    qdot[6] = quatDot.w();
+    qdot[3] = q_dot_p.x();
+    qdot[4] = q_dot_p.y();
+    qdot[5] = q_dot_p.z();
+    qdot[6] = q_dot_p.w();
 
     qdot[7] = payloadAccel.x();
     qdot[8] = payloadAccel.y();

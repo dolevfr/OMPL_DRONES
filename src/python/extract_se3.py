@@ -29,7 +29,7 @@ def compute_se3_line(state):
     cable_origins = translated_corners[4:8]
 
     # Number of drones = (total state length - 13) // 11
-    num_drones = 4
+    num_drones = (len(state) - 13) // 11
     drone_se3 = []
     for j in range(num_drones):
         base = 13 + j * 11  # start index for drone j

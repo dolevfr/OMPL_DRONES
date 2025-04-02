@@ -19,7 +19,8 @@ void payloadSystemSetup(app::PayloadSystem &setup)
     // Set the start and goal states
     base::StateSpacePtr stateSpace(setup.getStateSpace());
     base::ScopedState<base::CompoundStateSpace> start(stateSpace);
-    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(-10.0, 0.0, 10.0);
+    const Eigen::Vector3d &startPos = setup.getStartPosition();
+    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(startPos.x(), startPos.y(), startPos.z());
 
     start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
@@ -40,7 +41,8 @@ void payloadSystemSetup(app::PayloadSystem &setup)
         }
     }
     base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
-    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(0.0, 0.0, 30.0);
+    const Eigen::Vector3d &goalPos = setup.getGoalPosition();
+    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(goalPos.x(), goalPos.y(), goalPos.z());
 
     goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
@@ -94,8 +96,8 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 
         auto planner = std::make_shared<ompl::control::SST>(si);
         planner->setGoalBias(0.05);
-        planner->setSelectionRadius(0.5);  // Adjust for faster convergence
-        planner->setPruningRadius(0.4);    // Helps control sparsity
+        planner->setSelectionRadius(3.0);  // Adjust for faster convergence
+        planner->setPruningRadius(1.0);    // Helps control sparsity
 
         // Attach the problem definition with the optimization objective to the planner
         planner->setProblemDefinition(setup.getProblemDefinition());
@@ -266,7 +268,7 @@ int main(int argc, char ** /*unused*/)
 
     // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_3D.py");
+    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_four.py");
 
     system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
     // system("python3 ../src/python/ompl_app_multiple.py");

@@ -58,6 +58,9 @@ namespace ompl
             /** \brief Segmentation fault otherwise */
             void inferProblemDefinitionBounds() override {}
 
+            const Eigen::Vector3d& getStartPosition() const { return startPosition_; }
+            const Eigen::Vector3d& getGoalPosition() const { return goalPosition_; }
+
             double getDroneMass() const { return m_drone; }
             double getPayloadMass() const { return m_payload; }
 
@@ -71,6 +74,11 @@ namespace ompl
             double getMaxTorqueYaw() const { return maxTorqueYaw; }
             double getMinThrust() const { return minThrust; }
             double getMaxThrust() const { return maxThrust; }
+
+            double getThrustStd() const { return thrustStd; }
+            double getTorquePitchRollStd() const { return torquePitchRollStd; }
+            double getTorqueYawStd() const { return torqueYawStd; }
+            bool getSameControls() const { return sameControls; }
 
 
             /** \brief Get the solve time for the system */
@@ -156,32 +164,44 @@ namespace ompl
                 0, 0, (1.0 / 12.0) * m_payload * (w * w + d * d)).finished();
 
 
-            double droneBeta = 0.0;                   // Example: Torque damping coefficient
 
+
+            double droneBeta = 0.01;                  // Drone torque damping coefficient
+            double payloadBeta = 0.1;                 // Payload linear damping coefficient
 
             // Inputs of drones
-            static constexpr double maxTorquePitchRoll = 0.05;
-            static constexpr double maxTorqueYaw = 0.05;
+            static constexpr double maxTorquePitchRoll = 0.1;
+            static constexpr double maxTorqueYaw = 0.005;
             static constexpr double minThrust = 0;
-            static constexpr double maxThrust = 25;
+            static constexpr double maxThrust = 45;
 
-            static constexpr double maxDroneAngle = 40;
+            static constexpr double maxDroneAngle = 70;
             static constexpr double maxDroneVel = 20;
             
-            static constexpr double maxAnglePayload = 35;
-            static constexpr double maxPayloadVel = 1;
+            static constexpr double maxAnglePayload = 50;
+            static constexpr double maxPayloadVel = 10;
 
             // Angle of cable from vertical
-            static constexpr double maxTheta = 20;
+            static constexpr double maxTheta = 70;
             static constexpr double maxThetaVel = 20;
 
+            // Standard deviations for control inputs
+            double thrustStd = 3;
+            double torquePitchRollStd = 0.05;
+            double torqueYawStd = 0.0001;
+
+            bool sameControls = true; // true -> same controls for all drones, false -> different controls
+
+            Eigen::Vector3d startPosition_{-10.0, 0.0, 10.0};
+            Eigen::Vector3d goalPosition_{0.0, 10.0, 30.0};
+        
             double solveTime = 60 * 3;   
             
             bool printAllStates = true; // Print all states to file
             
             bool useSST = false; // true -> SST, false -> RRT
 
-            control::ODESolverPtr odeSolver;          // ODE solver for the system
+            control::ODESolverPtr odeSolver;  // ODE solver for the system
 
             RigidBodyGeometry rigidBody_;  // Stores mesh and collision checking
         };
@@ -236,8 +256,8 @@ public:
             return false;
         }
         
-        // Drone tilt check (assuming 4 drones):
-        for (unsigned int i = 0; i < 4; ++i)
+        // Drone tilt check:
+        for (unsigned int i = 0; i < payloadSystem_.getRobotCount() ; ++i)
         {
             unsigned int droneBaseIndex = 2 + i * 3; // Make sure this index is correct
             const auto *droneSO3State = compoundState->as<ompl::base::SO3StateSpace::StateType>(droneBaseIndex);
@@ -285,10 +305,10 @@ public:
         maxThrust_ = payloadSystem_->getMaxThrust();
 
         // Standard deviations for control inputs
-        thrustStd_ = 0.05;
-        torquePitchRollStd_ = 0.001;
-        torqueYawStd_ = 0.0001;
-        sameControls_ = true;
+        thrustStd_ = payloadSystem_->getThrustStd();
+        torquePitchRollStd_ = payloadSystem_->getTorquePitchRollStd();
+        torqueYawStd_ = payloadSystem_->getTorqueYawStd();
+        sameControls_ = payloadSystem_->getSameControls();
     }
 
     void setPlannerData(const ompl::control::PlannerData &plannerData)
@@ -297,13 +317,13 @@ public:
     }
 
     unsigned int sampleTo(ompl::control::Control *control,
+                          const ompl::control::Control *previous,
                           const ompl::base::State *source,
                           ompl::base::State *dest) override
     {
-        // Explicitly detect the initial state
         if (siC_->getStateSpace()->equalStates(source, payloadSystem_->getDefaultStartState().get()))
         {
-            // Clearly set initial hover thrust and zero torques
+            // Set the initial thrust and zero torques
             double hoverThrust = (payloadSystem_->getDroneMass() +
                                   payloadSystem_->getPayloadMass() / payloadSystem_->getRobotCount()) * 9.81;
 
@@ -311,38 +331,37 @@ public:
             for (unsigned int i = 0; i < payloadSystem_->getRobotCount(); ++i)
             {
                 unsigned int idx = i * 4;
-                vals[idx] = hoverThrust;
+                // Scale the hover thrust by some factor if you like (e.g. * 3)
+                vals[idx]     = hoverThrust * 3;
                 vals[idx + 1] = 0.0;
                 vals[idx + 2] = 0.0;
                 vals[idx + 3] = 0.0;
             }
         }
+        else if (previous)
+        {
+            sampleAroundPrevious(control, previous);
+        }
         else
         {
-            const ompl::control::Control *parentControl = getControlFromPlannerData(source);
-            if (!parentControl)
-            {
-                // Fallback if parent control is somehow missing
-                siC_->allocControlSampler()->sample(control);
-            }
-            else
-            {
-                sampleAroundPrevious(control, parentControl);
-            }
+            siC_->allocControlSampler()->sample(control);
         }
 
-        return siC_->propagateWhileValid(source, control, siC_->getMinControlDuration(), dest);
+        unsigned int duration = std::uniform_int_distribution<unsigned int>(
+            siC_->getMinControlDuration(), siC_->getMaxControlDuration())(rng_);
+
+        return siC_->propagateWhileValid(source, control, duration, dest);
     }
 
-
-
     unsigned int sampleTo(ompl::control::Control *control,
-                          const ompl::control::Control *,
                           const ompl::base::State *source,
                           ompl::base::State *dest) override
     {
-        return sampleTo(control, source, dest);
+        // Simply forward to the three-argument overload, with `previous = nullptr`.
+        // This is typically called if OMPL hasn't stored a previous control for some reason.
+        return sampleTo(control, /* previous */ nullptr, source, dest);
     }
+
 
 private:
     const ompl::control::SpaceInformation *siC_;
@@ -381,6 +400,15 @@ private:
 
         else
         {
+            // std::cout << "prevVals: [";
+            // for (unsigned int i = 0; i < droneCount_ * 4; ++i)
+            // {
+            //     std::cout << prevVals[i];
+            //     if (i < droneCount_ * 4 - 1)
+            //         std::cout << ", ";
+            // }
+            // std::cout << "]" << std::endl;
+
             // Sample once around previous values
             double sampledThrust = clamp(prevVals[0] + thrustStd_ * normalDist_(rng_), minThrust_, maxThrust_);
             double sampledTorqueRoll = clamp(prevVals[1] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
@@ -396,6 +424,17 @@ private:
                 newControlVals[idx + 2] = sampledTorquePitch;
                 newControlVals[idx + 3] = sampledTorqueYaw;
             }
+
+            // std::cout << "newControlVals: [";
+            // for (unsigned int i = 0; i < droneCount_ * 4; ++i)
+            // {
+            //     std::cout << newControlVals[i];
+            //     if (i < droneCount_ * 4 - 1)
+            //         std::cout << ", ";
+            // }
+            // std::cout << "]" << std::endl;
+
+            // std::cout << "--------------------------------" << std::endl;
         }
     }
 
@@ -426,7 +465,4 @@ private:
     }
 };
 
-  
-
 #endif // OMPL_APP_PAYLOAD_SYSTEM_H
-
