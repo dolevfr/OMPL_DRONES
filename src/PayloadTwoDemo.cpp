@@ -226,5 +226,5 @@ int main(int argc, char ** /*unused*/)
     path.printAsMatrix(outFile); // Save the solution matrix to the file
     outFile.close();
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories.py");
+    system("python3 ../src/python/plot_trajectories.py");
 }

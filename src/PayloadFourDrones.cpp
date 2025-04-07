@@ -11,6 +11,8 @@
 /* Author: Mark Moll (adapted for 4 drones) */
 
 #include "PayloadFourDrones.h"
+#include "PayloadClasses.h"
+
 
 unsigned int ompl::app::PayloadSystem::droneCount_ = 4; // Default number of drones
 
@@ -136,10 +138,10 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
     // const double *u_copy = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
 
     // std::vector<double> u = {
-    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3],
-    //     u_copy[0], u_copy[1], u_copy[2], u_copy[3]
+    //     50, 0.5, 0, 0,
+    //     50, 0.5, 0, 0,
+    //     50, 0.5, 0, 0,
+    //     50, 0.5, 0, 0
     // };
 
     unsigned int droneStateSize = 11; // State size per drone and cable

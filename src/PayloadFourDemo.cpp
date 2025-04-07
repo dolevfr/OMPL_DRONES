@@ -11,6 +11,8 @@
 /* Author: Mark Moll (adapted for 4 drones) */
 
 #include "PayloadFourDrones.h"
+#include "PayloadClasses.h"
+
 
 using namespace ompl;
 
@@ -79,11 +81,12 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     std::cout << "\n\n***** Planning for a " << setup.getName() << " *****\n" << std::endl;
 
     auto si = setup.getSpaceInformation();
-    
-    auto sampler = std::make_shared<PayloadSmoothDirectedControlSampler>(si.get(), &setup);
-    si->setDirectedControlSamplerAllocator([sampler](const ompl::control::SpaceInformation *) {
-        return sampler;
-    });    
+
+    si->setDirectedControlSamplerAllocator(
+        [&setup](const ompl::control::SpaceInformation *si) {
+            return std::make_shared<PayloadSmoothDirectedControlSampler>(si, &setup);
+        }
+    );
 
     std::cout << "Setting up the planner...\n";
     
@@ -94,6 +97,7 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         // Set the optimization objective in the problem definition
         setup.getProblemDefinition()->setOptimizationObjective(objective);
 
+        // auto planner = std::make_shared<MySST>(si);
         auto planner = std::make_shared<ompl::control::SST>(si);
         planner->setGoalBias(0.05);
         planner->setSelectionRadius(3.0);  // Adjust for faster convergence
@@ -107,7 +111,7 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     }
     else {
         // Set up the planner
-        auto planner = std::make_shared<control::RRT>(si);
+        auto planner = std::make_shared<MyRRT>(si);
         planner->setGoalBias(0.05); // Example: Adjust goal bias
         setup.setPlanner(planner);
     }
@@ -137,22 +141,12 @@ void payloadSystemDemo(app::PayloadSystem &setup)
             // Perform state propagation
             originalPropagator->propagate(from, control, duration, to);
 
-            // auto endPropagate = std::chrono::high_resolution_clock::now();
-            // auto durationPropagate = std::chrono::duration_cast<std::chrono::microseconds>(endPropagate - startPropagate).count();
-            // std::cout << "Propagation computation time: " << durationPropagate << " µs\n";
-            
-            auto startStateLine = std::chrono::high_resolution_clock::now();
-
             // Check if the propagated state is valid
             if (!setup.getSpaceInformation()->isValid(to))
             {
                 // std::cerr << "Warning: Propagated state is invalid. Skipping.\n";
                 return;
             }
-            // else
-            // {
-            //     std::cout << "Propagated state is valid.\n";
-            // }
 
             const auto *compoundState = to->as<ompl::base::CompoundState>();
 
@@ -268,8 +262,8 @@ int main(int argc, char ** /*unused*/)
 
     // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_four.py");
+    system("python3 ../src/python/plot_trajectories_four.py");
 
-    system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
+    // system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
     // system("python3 ../src/python/ompl_app_multiple.py");
 }

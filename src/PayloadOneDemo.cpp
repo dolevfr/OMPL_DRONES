@@ -268,7 +268,7 @@ int main(int argc, char ** /*unused*/)
 
     // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
 
-    system("python3 /home/dolev/Desktop/Research/OMPL_drones/src/python/plot_trajectories_one.py");
+    system("python3 ../src/python/plot_trajectories_one.py");
 
     // system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
     // system("python3 ../src/python/ompl_app_multiple.py");
