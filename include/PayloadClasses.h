@@ -1,15 +1,15 @@
 #ifndef PAYLOAD_CLASSES_H
 #define PAYLOAD_CLASSES_H
 
-#include "PayloadFourDrones.h"
-
+#include "PayloadTwoDrones.h"
 
 class PayloadSystemValidityChecker : public ompl::base::StateValidityChecker
 {
 public:
     PayloadSystemValidityChecker(const ompl::base::SpaceInformationPtr &si, const ompl::app::PayloadSystem &system)
         : ompl::base::StateValidityChecker(si), payloadSystem_(system)
-    {}
+    {
+    }
 
     bool isValid(const ompl::base::State *state) const override
     {
@@ -22,7 +22,7 @@ public:
         ompl::base::State *correctedState = si_->cloneState(state);
         si_->getStateSpace()->enforceBounds(correctedState);
         si_->freeState(correctedState);
-    
+
         // --- Custom Tilt Constraint Check ---
         const auto *compoundState = state->as<ompl::base::CompoundState>();
         if (!compoundState)
@@ -30,7 +30,7 @@ public:
             std::cerr << "State is not a CompoundState!" << std::endl;
             return false;
         }
-        
+
         // Payload tilt check:
         const auto *payloadSE3State = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
         Eigen::Quaterniond payloadQuat(
@@ -39,17 +39,17 @@ public:
             payloadSE3State->rotation().y,
             payloadSE3State->rotation().z);
         payloadQuat.normalize(); // Ensure normalization
-    
+
         Eigen::Vector3d payloadUp = payloadQuat * Eigen::Vector3d::UnitZ();
-        double payloadTilt = std::acos( std::clamp(payloadUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0) );
+        double payloadTilt = std::acos(std::clamp(payloadUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0));
         if (payloadTilt > (payloadSystem_.getMaxAnglePayload() * M_PI / 180.0))
         {
             // std::cout << "Number of payload tilt exceed: " << ++payloadExceeded << std::endl;
             return false;
         }
-        
+
         // Drone tilt check:
-        for (unsigned int i = 0; i < payloadSystem_.getRobotCount() ; ++i)
+        for (unsigned int i = 0; i < payloadSystem_.getRobotCount(); ++i)
         {
             unsigned int droneBaseIndex = 2 + i * 3; // Make sure this index is correct
             const auto *droneSO3State = compoundState->as<ompl::base::SO3StateSpace::StateType>(droneBaseIndex);
@@ -59,27 +59,23 @@ public:
                 droneSO3State->y,
                 droneSO3State->z);
             droneQuat.normalize(); // Normalize the drone quaternion
-    
+
             Eigen::Vector3d droneUp = droneQuat * Eigen::Vector3d::UnitZ();
-            double droneTilt = std::acos( std::clamp(droneUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0) );
+            double droneTilt = std::acos(std::clamp(droneUp.normalized().dot(Eigen::Vector3d::UnitZ()), -1.0, 1.0));
             if (droneTilt > (payloadSystem_.getMaxDroneAngle() * M_PI / 180.0))
             {
                 // std::cout << "Number of drone tilt exceed: " << ++droneExceeded << std::endl;
                 return false;
             }
         }
-        
+
         // std::cout << "Number of valid states: " << ++validStates << std::endl;
         return true;
     }
-    
-    
 
 private:
     const ompl::app::PayloadSystem &payloadSystem_; // Reference to PayloadSystem
 };
-
-
 
 class PayloadSmoothDirectedControlSampler : public ompl::control::DirectedControlSampler
 {
@@ -87,8 +83,8 @@ public:
     PayloadSmoothDirectedControlSampler(const ompl::control::SpaceInformation *si,
                                         const ompl::app::PayloadSystem *payloadSystem)
         : DirectedControlSampler(si), siC_(si), payloadSystem_(payloadSystem),
-        plannerData_(nullptr),
-        rng_(std::random_device{}()), normalDist_(0.0, 1.0)
+          plannerData_(nullptr),
+          rng_(std::random_device{}()), normalDist_(0.0, 1.0)
     {
         droneCount_ = payloadSystem_->getRobotCount();
         maxTorquePitchRoll_ = payloadSystem_->getMaxTorquePitchRoll();
@@ -118,14 +114,15 @@ public:
             std::cout << "Sampling from the start state." << std::endl;
             // Set the initial thrust and zero torques
             double hoverThrust = (payloadSystem_->getDroneMass() +
-                                  payloadSystem_->getPayloadMass() / payloadSystem_->getRobotCount()) * 9.81;
+                                  payloadSystem_->getPayloadMass() / payloadSystem_->getRobotCount()) *
+                                 9.81;
 
             double *vals = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
             for (unsigned int i = 0; i < payloadSystem_->getRobotCount(); ++i)
             {
                 unsigned int idx = i * 4;
                 // Scale the hover thrust by some factor if you like (e.g. * 3)
-                vals[idx]     = hoverThrust * 3;
+                vals[idx] = hoverThrust * 3;
                 vals[idx + 1] = 0.0;
                 vals[idx + 2] = 0.0;
                 vals[idx + 3] = 0.0;
@@ -156,7 +153,6 @@ public:
         // This is typically called if OMPL hasn't stored a previous control for some reason.
         return sampleTo(control, /* previous */ nullptr, source, dest);
     }
-
 
 private:
     const ompl::control::SpaceInformation *siC_;
@@ -201,7 +197,7 @@ private:
             double sampledTorquePitch = clamp(prevVals[2] + torquePitchRollStd_ * normalDist_(rng_), -maxTorquePitchRoll_, maxTorquePitchRoll_);
             double sampledTorqueYaw = clamp(prevVals[3] + torqueYawStd_ * normalDist_(rng_), -maxTorqueYaw_, maxTorqueYaw_);
 
-            // std::cout << "[Sampler] Identical control: thrust=" << sampledThrust 
+            // std::cout << "[Sampler] Identical control: thrust=" << sampledThrust
             //             << ", roll=" << sampledTorqueRoll
             //             << ", pitch=" << sampledTorquePitch
             //             << ", yaw=" << sampledTorqueYaw << std::endl;
@@ -210,7 +206,7 @@ private:
             for (unsigned int i = 0; i < droneCount_; ++i)
             {
                 unsigned int idx = i * 4;
-                newControlVals[idx]     = sampledThrust;
+                newControlVals[idx] = sampledThrust;
                 newControlVals[idx + 1] = sampledTorqueRoll;
                 newControlVals[idx + 2] = sampledTorquePitch;
                 newControlVals[idx + 3] = sampledTorqueYaw;
@@ -245,8 +241,6 @@ private:
     }
 };
 
-
-
 class MyRRT : public ompl::control::RRT
 {
 public:
@@ -261,9 +255,6 @@ public:
 private:
     ompl::control::SpaceInformationPtr siC_;
 };
-
-
-
 
 // // Adapter that wraps your custom directed sampler so that it can be used as a ControlSampler.
 // // It lets you set a previous control that will be passed to sampleTo().
@@ -311,15 +302,11 @@ private:
 //         previousControl_ = nullptr;
 //     }
 
-
 // private:
 //     ompl::control::SpaceInformation *siC_;
 //     std::shared_ptr<ompl::control::DirectedControlSampler> directedSampler_;
 //     const ompl::control::Control *previousControl_;
 // };
-
-
-
 
 // class MySST : public ompl::control::SST
 // {
@@ -358,16 +345,16 @@ private:
 //         checkValidity();
 //         ompl::base::State *sample = siC_->allocState();
 //         auto stateSampler = siC_->getStateSpace()->allocStateSampler();
-    
+
 //         unsigned long iteration = 0;
 //         std::cout << "MySST::solve() starting expansion loop." << std::endl;
-    
+
 //         while (!ptc())
 //         {
 //             iteration++;
 //             if(iteration % 100 == 0)
 //                 std::cout << "Iteration " << iteration << std::endl;
-    
+
 //             // Sample a random state.
 //             stateSampler->sampleUniform(sample);
 //             std::cout << "Iteration " << iteration << ": Sampled state." << std::endl;
@@ -388,7 +375,7 @@ private:
 //                 continue;
 //             }
 //             std::cout << "Iteration " << iteration << ": Parent motion found." << std::endl;
-    
+
 //             // Retrieve and prepare our adapter.
 //             DirectedControlSamplerAdapter *adapter =
 //                 dynamic_cast<DirectedControlSamplerAdapter*>(controlSampler_.get());
@@ -399,13 +386,13 @@ private:
 //             }
 //             std::cout << "Iteration " << iteration << ": Setting previous control from parent." << std::endl;
 //             adapter->setPreviousControl(parentMotion->control_);
-    
+
 //             // Allocate a new control and state.
 //             ompl::control::Control *u = siC_->allocControl();
 //             ompl::base::State *newState = siC_->allocState();
 //             std::cout << "Iteration " << iteration << ": Sampling new control using adapter." << std::endl;
 //             adapter->sample(u);
-    
+
 //             // Propagate from parent's state using the sampled control.
 //             unsigned int duration = siC_->propagateWhileValid(parentMotion->state_, u,
 //                                                               siC_->getMaxControlDuration(), newState);
@@ -417,7 +404,7 @@ private:
 //                 siC_->freeState(newState);
 //                 continue;
 //             }
-    
+
 //             // Create a new motion.
 //             ompl::control::SST::Motion *motion = new ompl::control::SST::Motion(siC_.get());
 //             siC_->getStateSpace()->copyState(motion->state_, newState);
@@ -425,21 +412,17 @@ private:
 //             motion->parent_ = parentMotion;  // Link to parent.
 //             addMotion(motion);
 //             std::cout << "Iteration " << iteration << ": Motion added to tree." << std::endl;
-    
+
 //             siC_->freeState(newState);
 //         }
-    
+
 //         siC_->freeState(sample);
 //         std::cout << "MySST::solve() expansion loop ended after " << iteration << " iterations." << std::endl;
 //         return ompl::base::PlannerStatus::EXACT_SOLUTION;
 //     }
-    
 
 // private:
 //     ompl::control::SpaceInformationPtr siC_;
 // };
-
-
-
 
 #endif // PAYLOAD_CLASSES_H

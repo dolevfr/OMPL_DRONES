@@ -10,101 +10,69 @@
 
 /* Author: Mark Moll (adapted for 4 drones) */
 
-#include <ompl/control/planners/rrt/RRT.h>
-#include <omplapp/config.h>
-#include <ompl/base/terminationconditions/IterationTerminationCondition.h>
-#include <ompl/base/spaces/SE3StateSpace.h>
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-
 #include "PayloadTwoDrones.h"
+#include "PayloadClasses.h"
+
 
 using namespace ompl;
 
 void payloadSystemSetup(app::PayloadSystem &setup)
 {
-    // base::StateSpacePtr stateSpace(setup.getStateSpace());
-    // base::ScopedState<base::CompoundStateSpace> start(stateSpace);
-    // start->as<base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
-    // start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-    // for (unsigned int i = 0; i < 6; ++i)
-    // {
-    //     start->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
-    // }
-    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
-    // {
-    //     unsigned int baseIndex = 2 + i * 3;
-    //     start->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
-    //     for (unsigned int j = 0; j < 3; ++j)
-    //     {
-    //         start->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
-    //     }
-    //     for (unsigned int j = 0; j < 4; ++j)
-    //     {
-    //         start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
-    //     }
-    // }
-    // base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
-    // goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(100.0, 125.0, -150.0);
-    // goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-    // for (unsigned int i = 0; i < 6; ++i)
-    // {
-    //     goal->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
-    // }
-    // for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
-    // {
-    //     unsigned int baseIndex = 2 + i * 3;
-    //     goal->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
-    //     for (unsigned int j = 0; j < 3; ++j)
-    //     {
-    //         goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
-    //     }
-    //     for (unsigned int j = 0; j < 4; ++j)
-    //     {
-    //         goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
-    //     }
-    // }
+    // Set the start and goal states
+    base::StateSpacePtr stateSpace(setup.getStateSpace());
+    base::ScopedState<base::CompoundStateSpace> start(stateSpace);
+    const Eigen::Vector3d &startPos = setup.getStartPosition();
+    start->as<base::SE3StateSpace::StateType>(0)->setXYZ(startPos.x(), startPos.y(), startPos.z());
 
-    // Retrieve the state space
-    ompl::base::StateSpacePtr stateSpace = setup.getStateSpace();
-
-    // Define the payload goal position
-    Eigen::Vector3d goalPosition(150.0, 125.0, -150.0);
-
-    // Create a goal based only on payload position
-    auto goal = std::make_shared<PayloadPositionGoal>(setup.getSpaceInformation(), goalPosition);
-
-    // Set the goal in the planning setup
-    setup.setGoal(goal);
-
-    // Create the start state
-    ompl::base::ScopedState<ompl::base::CompoundStateSpace> start(stateSpace);
-    start->as<ompl::base::SE3StateSpace::StateType>(0)->setXYZ(125.0, 125.0, -150.0);
-    start->as<ompl::base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
-
+    start->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
     for (unsigned int i = 0; i < 6; ++i)
     {
-        start->as<ompl::base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+        start->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
     }
-
     for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
     {
         unsigned int baseIndex = 2 + i * 3;
-        start->as<ompl::base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
+        start->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
         for (unsigned int j = 0; j < 3; ++j)
         {
-            start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
         }
         for (unsigned int j = 0; j < 4; ++j)
         {
-            start->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
+            start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
+        }
+    }
+    base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
+    const Eigen::Vector3d &goalPos = setup.getGoalPosition();
+    goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(goalPos.x(), goalPos.y(), goalPos.z());
+
+    goal->as<base::SE3StateSpace::StateType>(0)->rotation().setIdentity();
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        goal->as<base::RealVectorStateSpace::StateType>(1)->values[i] = 0.0;
+    }
+    for (unsigned int i = 0; i < setup.getRobotCount(); ++i)
+    {
+        unsigned int baseIndex = 2 + i * 3;
+        goal->as<base::SO3StateSpace::StateType>(baseIndex)->setIdentity();
+        for (unsigned int j = 0; j < 3; ++j)
+        {
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 1)->values[j] = 0.0;
+        }
+        for (unsigned int j = 0; j < 4; ++j)
+        {
+            goal->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
 
-    // Set start state
-    setup.setStartState(start);
+    setup.setStartAndGoalStates(start, goal);
+
+    // Ensure state space and si_ are initialized first
+    auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(setup.getSpaceInformation(), setup);
+    setup.getSpaceInformation()->setStateValidityChecker(validityChecker);
+
 }
+
 
 
 
@@ -112,88 +80,144 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 {
     std::cout << "\n\n***** Planning for a " << setup.getName() << " *****\n" << std::endl;
 
-    // Set up the planner
-    auto planner = std::make_shared<control::RRT>(setup.getSpaceInformation());
-    planner->setGoalBias(0.05); // Example: Adjust goal bias
-    setup.setPlanner(planner);
+    auto si = setup.getSpaceInformation();
 
-    // // Open file for writing and ensure it works
-    // std::ofstream outFile("solution_path.txt", std::ios::out | std::ios::trunc);
-    // if (!outFile.is_open())
-    // {
-    //     std::cerr << "Error: Unable to open file for writing solution path.\n";
-    //     return;
-    // }
-    // std::cout << "Writing propagated states to solution_path.txt...\n";
-    // // Wrap the state propagator to log every propagated state
-    // auto originalPropagator = setup.getSpaceInformation()->getStatePropagator();
-    // setup.getSpaceInformation()->setStatePropagator([&setup, originalPropagator, &outFile](
-    //                                                     const ompl::base::State *from,
-    //                                                     const ompl::control::Control *control,
-    //                                                     double duration,
-    //                                                     ompl::base::State *to) {
-    //     // Perform state propagation
-    //     originalPropagator->propagate(from, control, duration, to);
+    si->setDirectedControlSamplerAllocator(
+        [&setup](const ompl::control::SpaceInformation *si) {
+            return std::make_shared<PayloadSmoothDirectedControlSampler>(si, &setup);
+        }
+    );
 
-    //     // Log the propagated state
-    //     const auto *compoundState = to->as<ompl::base::CompoundState>();
-    //     if (!compoundState)
-    //     {
-    //         std::cerr << "Error: Propagated state is invalid.\n";
-    //         return;
-    //     }
+    std::cout << "Setting up the planner...\n";
+    
 
-    //     std::ostringstream stateLine;
+    if (setup.getUseSST()) {
+        auto objective = std::make_shared<ompl::base::PathLengthOptimizationObjective>(si);
 
-    //     // Log payload state
-    //     const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
-    //     stateLine << payloadState->getX() << " " << payloadState->getY() << " " << payloadState->getZ() << " ";
-    //     stateLine << payloadState->rotation().x << " " << payloadState->rotation().y << " "
-    //           << payloadState->rotation().z << " " << payloadState->rotation().w << " ";
+        // Set the optimization objective in the problem definition
+        setup.getProblemDefinition()->setOptimizationObjective(objective);
 
-    //     // Log payload velocities
-    //     const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
-    //     for (unsigned int i = 0; i < 6; ++i)
-    //     {
-    //         stateLine << payloadVelocity->values[i] << " ";
-    //     }
+        // auto planner = std::make_shared<MySST>(si);
+        auto planner = std::make_shared<ompl::control::SST>(si);
+        planner->setGoalBias(0.05);
+        planner->setSelectionRadius(3.0);  // Adjust for faster convergence
+        planner->setPruningRadius(1.0);    // Helps control sparsity
 
-    //     // Log drone states
-    //     for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
-    //     {
-    //         unsigned int baseIndex = 2 + d * 3;
+        // Attach the problem definition with the optimization objective to the planner
+        planner->setProblemDefinition(setup.getProblemDefinition());
+        planner->setup();
 
-    //         // Log drone orientation
-    //         const auto *droneOrientation = compoundState->as<ompl::base::SO3StateSpace::StateType>(baseIndex);
-    //         stateLine << droneOrientation->x << " " << droneOrientation->y << " "
-    //               << droneOrientation->z << " " << droneOrientation->w << " ";
+        setup.setPlanner(planner);
+    }
+    else {
+        // Set up the planner
+        auto planner = std::make_shared<MyRRT>(si);
+        planner->setGoalBias(0.05); // Example: Adjust goal bias
+        setup.setPlanner(planner);
+    }
 
-    //         // Log drone velocities
-    //         const auto *droneVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1);
-    //         for (unsigned int i = 0; i < 3; ++i)
-    //         {
-    //         stateLine << droneVelocity->values[i] << " ";
-    //         }
+    // // ----------------- Print the states to the file -----------------
 
-    //         // Log cable angles and velocities
-    //         const auto *cableState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2);
-    //         for (unsigned int i = 0; i < 4; ++i)
-    //         {
-    //         stateLine << cableState->values[i] << " ";
-    //         }
-    //     }
+    std::shared_ptr<std::ofstream> outFile;
 
-    //     outFile << stateLine.str() << "\n";
-    //     outFile.flush(); // Ensure the data is written immediately
-    // });
+    if (setup.getPrintAllStates())
+    {
+        // Open file for writing and ensure it works
+        outFile = std::make_shared<std::ofstream>("solution_path.txt", std::ios::out | std::ios::trunc);
+        if (!outFile->is_open())
+        {
+            std::cerr << "Error: Unable to open file for writing solution path.\n";
+            return;
+        }
 
+        // Wrap the state propagator to collect and print propagated states
+        auto originalPropagator = setup.getSpaceInformation()->getStatePropagator();
+        setup.getSpaceInformation()->setStatePropagator([&setup, originalPropagator, &outFile](
+                                                            const ompl::base::State *from,
+                                                            const ompl::control::Control *control,
+                                                            double duration,
+                                                            ompl::base::State *to) {
+
+            // Perform state propagation
+            originalPropagator->propagate(from, control, duration, to);
+
+            // Check if the propagated state is valid
+            if (!setup.getSpaceInformation()->isValid(to))
+            {
+                // std::cerr << "Warning: Propagated state is invalid. Skipping.\n";
+                return;
+            }
+
+            const auto *compoundState = to->as<ompl::base::CompoundState>();
+
+
+            // Construct the state line for logging the system state and inputs
+            std::ostringstream stateLine;
+
+            // Payload SE3 state (position XYZ, orientation quaternion XYZW)
+            const auto *payloadState = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+            stateLine << payloadState->getX() << " " << payloadState->getY() << " " << payloadState->getZ() << " ";
+            stateLine << payloadState->rotation().x << " " << payloadState->rotation().y << " "
+                    << payloadState->rotation().z << " " << payloadState->rotation().w << " ";
+
+            // Payload velocity (6 dimensions: linear XYZ, angular XYZ)
+            const auto *payloadVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(1);
+            for (unsigned int i = 0; i < 6; ++i)
+            {
+                stateLine << payloadVelocity->values[i] << " ";
+            }
+
+            // Drone states (orientation, velocity, cable parameters)
+            for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
+            {
+                unsigned int baseIndex = 2 + d * 3;
+
+                // Drone orientation (quaternion XYZW)
+                const auto *droneOrientation = compoundState->as<ompl::base::SO3StateSpace::StateType>(baseIndex);
+                stateLine << droneOrientation->x << " " << droneOrientation->y << " "
+                        << droneOrientation->z << " " << droneOrientation->w << " ";
+
+                // Drone velocity (3 dimensions XYZ)
+                const auto *droneVelocity = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 1);
+                for (unsigned int i = 0; i < 3; ++i)
+                {
+                    stateLine << droneVelocity->values[i] << " ";
+                }
+
+                // Cable parameters (angles and angular velocities)
+                const auto *cableState = compoundState->as<ompl::base::RealVectorStateSpace::StateType>(baseIndex + 2);
+                for (unsigned int i = 0; i < 4; ++i)
+                {
+                    stateLine << cableState->values[i] << " ";
+                }
+            }
+
+            // Append control inputs (thrust and torques for each drone)
+            const double *controlValues = control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
+            for (unsigned int d = 0; d < setup.getRobotCount(); ++d)
+            {
+                unsigned int controlBase = d * 4; // 4 control inputs per drone
+                for (unsigned int i = 0; i < 4; ++i)
+                {
+                    stateLine << controlValues[controlBase + i] << " ";
+                }
+            }
+
+            // Append the duration of the control
+            stateLine << duration;
+
+            std::string line = stateLine.str();
+            // std::cout << line << "\n";  // Print to console
+            *outFile << line << "\n";    // Save to file
+            outFile->flush();            // Ensure the line is written immediately
+        });
+    }
+
+    //     // ----------------- Print the states to the file -----------------
     // Solve the planning problem
-    // if (setup.solve(base::IterationTerminationCondition(2)))
     if (setup.solve(setup.getSolveTime()))
     {
         std::cout << "Planning completed successfully.\n";
-        control::PathControl &path(setup.getSolutionPath());
-        path.printAsMatrix(std::cout); // Optionally print the solution matrix
 
         if (!setup.haveExactSolutionPath())
         {
@@ -214,17 +238,32 @@ int main(int argc, char ** /*unused*/)
     // Create MultiDronePlanning instance
     app::PayloadSystem multiDrone;
 
+    // Load Environment and Robot Meshes
+    std::string meshDir = boost::filesystem::absolute("../src/meshes").string();
+    multiDrone.setMeshPath({boost::filesystem::path(meshDir)});
+
+    multiDrone.setEnvironmentMesh(meshDir + "/empty_env.dae");
+    multiDrone.setRobotMesh(meshDir + "/box_collision.dae");
+    
     // Setup MultiDrone planning environment
     payloadSystemSetup(multiDrone);
 
     // Run MultiDrone planning demo
     payloadSystemDemo(multiDrone);
 
-    // Save solution path to file
-    std::ofstream outFile("solution_path.txt");
-    control::PathControl &path(multiDrone.getSolutionPath());
-    path.printAsMatrix(outFile); // Save the solution matrix to the file
-    outFile.close();
+    if (!multiDrone.getPrintAllStates())
+    {
+        // Save solution path to file
+        std::ofstream outFile("solution_path.txt");
+        control::PathControl &path(multiDrone.getSolutionPath());
+        path.printAsMatrix(outFile); // Save the solution matrix to the file
+        outFile.close();
+    }
 
-    system("python3 ../src/python/plot_trajectories.py");
+    // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
+
+    system("python3 ../src/python/plot_trajectories_two.py");
+
+    // system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
+    // system("python3 ../src/python/ompl_app_multiple.py");
 }

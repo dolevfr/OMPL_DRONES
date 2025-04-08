@@ -10,7 +10,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     # return
 
     # Determine the number of drones based on the number of columns
-    num_drones = 1  # 13 columns for payload (SE3 + velocity), 11 per drone
+    num_drones = 4  # 13 columns for payload (SE3 + velocity), 11 per drone
     print(f"System contains payload and {num_drones} drones.")
 
     # Number of states to plot
@@ -39,7 +39,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     all_z.append(payload_z)
 
     # Plot the start position
-    start_x, start_y, start_z = 0, 0, 10
+    start_x, start_y, start_z = -10, 0, 10
     ax.scatter(start_x, start_y, start_z, label="Start", color='c', s=100, marker='*')
 
     # Plot the goal position
@@ -89,7 +89,10 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
             ax.plot(points[:, 0], points[:, 1], points[:, 2], 'b')
 
         # Define cable origins (Top Face)
-        cable_origins = [(rotation_matrix @ np.array([0, 0, h / 2])) + np.array([payload_x[i], payload_y[i], payload_z[i]])]
+        cable_origins = [
+            (rotation_matrix @ np.array([-w / 2, 0, h / 2])) + np.array([payload_x[i], payload_y[i], payload_z[i]]),
+            (rotation_matrix @ np.array([w / 2, 0, h / 2])) + np.array([payload_x[i], payload_y[i], payload_z[i]])
+        ]
 
         for j, cable_origin in enumerate(cable_origins):
             # Cable angles (theta, phi)
@@ -103,7 +106,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
 
             cable_vector = np.array([cable_x, cable_y, cable_z])
             cable_end = cable_origin + cable_vector
-            
+
             # Plot the cable
             ax.plot([cable_origin[0], cable_end[0]],
                     [cable_origin[1], cable_end[1]],
