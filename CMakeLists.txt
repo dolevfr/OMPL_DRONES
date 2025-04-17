@@ -30,6 +30,10 @@ add_executable(PayloadFourDrones src/PayloadFourDemo.cpp src/PayloadFourDrones.c
 target_link_libraries(PayloadFourDrones PRIVATE ompl ompl_app ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)
 target_include_directories(PayloadFourDrones PRIVATE ${OMPL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} include)
 
+# add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
+# target_link_libraries(PayloadTwoDrones PRIVATE ompl ompl_app ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)
+# target_include_directories(PayloadTwoDrones PRIVATE ${OMPL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} include)
+
 # add_executable(PayloadOneDrone src/PayloadOneDemo.cpp src/PayloadOneDrone.cpp)
 # target_link_libraries(PayloadOneDrone PRIVATE ompl ompl_app ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)
 # target_include_directories(PayloadOneDrone PRIVATE ${OMPL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} include)
@@ -38,9 +42,7 @@ target_include_directories(PayloadFourDrones PRIVATE ${OMPL_INCLUDE_DIRS} ${Boos
 # add_executable(QuadrotorDemo other_stuff/QuadrotorDemo.cpp other_stuff/QuadrotorPlanning.cpp)
 # target_link_libraries(QuadrotorDemo PRIVATE ompl ompl_app ompl_app_base Python3::Python Python3::NumPy)
 
-# # Add the executable for PayloadTwoDronesDemo
-# add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
-# target_link_libraries(PayloadTwoDrones PRIVATE stdc++fs ompl ompl_app ompl_app_base)
+
 
 # Set build type to Debug for debugging purposes
 set(CMAKE_BUILD_TYPE Debug)

@@ -167,10 +167,10 @@ namespace ompl
             double payloadBeta = 0.1;                 // Payload linear damping coefficient
 
             // Inputs of drones
-            static constexpr double maxTorquePitchRoll = 0.1;
+            static constexpr double maxTorquePitchRoll = 0.02;
             static constexpr double maxTorqueYaw = 0.005;
             static constexpr double minThrust = 0;
-            static constexpr double maxThrust = 60;
+            static constexpr double maxThrust = 80;
 
             static constexpr double maxDroneAngle = 40;
             static constexpr double maxDroneVel = 20;
@@ -183,8 +183,8 @@ namespace ompl
             static constexpr double maxThetaVel = 20;
 
             // Standard deviations for control inputs
-            double thrustStd = 3;
-            double torquePitchRollStd = 0.02;
+            double thrustStd = 10;
+            double torquePitchRollStd = 0.01;
             double torqueYawStd = 0.0001;
 
             bool sameControls = true; // true -> same controls for all drones, false -> different controls
@@ -192,9 +192,9 @@ namespace ompl
             Eigen::Vector3d startPosition_{-10.0, 0.0, 10.0};
             Eigen::Vector3d goalPosition_{0.0, 10.0, 30.0};
         
-            double solveTime = 60 * 3;  
+            double solveTime = 60 * 5;  
             
-            bool printAllStates = true; // Print all states to file
+            bool printAllStates = false; // Print all states to file
             
             bool useSST = false; // true -> SST, false -> RRT
 

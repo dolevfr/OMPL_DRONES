@@ -100,8 +100,8 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         // auto planner = std::make_shared<MySST>(si);
         auto planner = std::make_shared<ompl::control::SST>(si);
         planner->setGoalBias(0.05);
-        planner->setSelectionRadius(3.0);  // Adjust for faster convergence
-        planner->setPruningRadius(1.0);    // Helps control sparsity
+        planner->setSelectionRadius(1.5);  // Adjust for faster convergence
+        planner->setPruningRadius(0.5);    // Helps control sparsity
 
         // Attach the problem definition with the optimization objective to the planner
         planner->setProblemDefinition(setup.getProblemDefinition());

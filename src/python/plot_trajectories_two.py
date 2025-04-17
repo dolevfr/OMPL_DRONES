@@ -10,11 +10,11 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     # return
 
     # Determine the number of drones based on the number of columns
-    num_drones = 4  # 13 columns for payload (SE3 + velocity), 11 per drone
+    num_drones = 2  # 13 columns for payload (SE3 + velocity), 11 per drone
     print(f"System contains payload and {num_drones} drones.")
 
     # Number of states to plot
-    to_plot = 50
+    to_plot = 100
 
     # Randomly select states if there are too many
     if data.shape[0] > to_plot:

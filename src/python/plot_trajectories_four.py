@@ -43,7 +43,7 @@ def plot_trajectories(filename="/home/dolev/Desktop/Research/OMPL_drones/build/s
     ax.scatter(start_x, start_y, start_z, label="Start", color='c', s=100, marker='*')
 
     # Plot the goal position
-    goal_x, goal_y, goal_z = 0, 10, 30
+    goal_x, goal_y, goal_z = 10, 0, 10
     ax.scatter(goal_x, goal_y, goal_z, label="Goal", color='m', s=100, marker='*')
 
     # ax.scatter(payload_x, payload_y, payload_z, label="Payload", color='b', s=50)

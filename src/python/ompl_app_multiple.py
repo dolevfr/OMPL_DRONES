@@ -164,7 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def openEnvironment(self):
         # Always load the fixed environment mesh.
-        fname = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/empty_env.dae"
+        fname = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/env_4.dae"
         # print("Loading environment mesh from:", fname)
         self.environmentFile = fname
         self.omplSetup.setEnvironmentMesh(self.environmentFile)

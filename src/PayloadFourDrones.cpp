@@ -44,15 +44,15 @@ ompl::app::PayloadSystem::PayloadSystem()
             postPropagate(state, control, duration, result);
         }));
 
-    si_->setup();
+    // si_->setStateValidityCheckingResolution(0.001);
 
-    si_->setStateValidityCheckingResolution(0.01);
-
-    auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(si_, *this);
-    si_->setStateValidityChecker(validityChecker);
+    // auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(si_, *this);
+    // si_->setStateValidityChecker(validityChecker);
 
     auto motionValidator = std::make_shared<ompl::base::DiscreteMotionValidator>(si_);
     si_->setMotionValidator(motionValidator);
+
+    si_->setup();
 }
 
 ompl::base::ScopedState<> ompl::app::PayloadSystem::getDefaultStartState() const
@@ -73,18 +73,18 @@ ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
     stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
 
     // Add RealVector state space for the payload's velocity (6 dimensions)
-    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.002);
+    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.1);
 
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
         // Add SO3 state space for orientation
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.002);
+        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.02);
 
         // Add RealVector state space for velocity (3 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.002);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.02);
 
         // Add RealVector state space for cable angles and velocities (4 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.002);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.02);
     }
 
     stateSpace->lock();
@@ -133,16 +133,6 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
     qdot.resize(q.size(), 0);
 
     const double *u = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
-
-    // // Access the control values
-    // const double *u_copy = ctrl->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
-
-    // std::vector<double> u = {
-    //     50, 0.5, 0, 0,
-    //     50, 0.5, 0, 0,
-    //     50, 0.5, 0, 0,
-    //     50, 0.5, 0, 0
-    // };
 
     unsigned int droneStateSize = 11; // State size per drone and cable
     unsigned int droneIndex = 13;     // Start index for drones
@@ -269,9 +259,6 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
 
 void ompl::app::PayloadSystem::postPropagate(const base::State * /*state*/, const control::Control *control, const double /*duration*/, base::State *result)
 {   
-    // Ensure the custom validity checker is always used
-    si_->setStateValidityChecker(std::make_shared<PayloadSystemValidityChecker>(si_, *this));
-
     // Access the CompoundStateSpace and subspaces
     const base::CompoundStateSpace *cs = getStateSpace()->as<base::CompoundStateSpace>();
 
@@ -323,8 +310,12 @@ void ompl::app::PayloadSystem::setDefaultBounds()
 {
     // Enforce payload position bounds (-300, 600) for x, y, z
     base::RealVectorBounds positionBounds(3); // SE3 position bounds
-    positionBounds.setLow(-1000);
-    positionBounds.setHigh(1000);
+    positionBounds.setLow(0, -11); // x lower bound
+    positionBounds.setHigh(0, 11); // x upper bound
+    positionBounds.setLow(1, -11); // y lower bound
+    positionBounds.setHigh(1, 11); // y upper bound
+    positionBounds.setLow(2, -1); // z lower bound
+    positionBounds.setHigh(2, 28); // z upper bound
     getStateSpace()->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(0)->setBounds(positionBounds);
 
     // Enforce payload velocity bounds (-10, 10) for x, y, z, and angular velocities

@@ -42,6 +42,7 @@ void payloadSystemSetup(app::PayloadSystem &setup)
             start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
+
     base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
     const Eigen::Vector3d &goalPos = setup.getGoalPosition();
     goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(goalPos.x(), goalPos.y(), goalPos.z());
@@ -66,11 +67,6 @@ void payloadSystemSetup(app::PayloadSystem &setup)
     }
 
     setup.setStartAndGoalStates(start, goal);
-
-    // Ensure state space and si_ are initialized first
-    auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(setup.getSpaceInformation(), setup);
-    setup.getSpaceInformation()->setStateValidityChecker(validityChecker);
-
 }
 
 
@@ -98,10 +94,10 @@ void payloadSystemDemo(app::PayloadSystem &setup)
         setup.getProblemDefinition()->setOptimizationObjective(objective);
 
         // auto planner = std::make_shared<MySST>(si);
-        auto planner = std::make_shared<ompl::control::SST>(si);
+        auto planner = std::make_shared<MySST>(si, &setup);
         planner->setGoalBias(0.05);
-        planner->setSelectionRadius(3.0);  // Adjust for faster convergence
-        planner->setPruningRadius(1.0);    // Helps control sparsity
+        planner->setSelectionRadius(0.2);  // Adjust for faster convergence
+        planner->setPruningRadius(0.1);    // Helps control sparsity
 
         // Attach the problem definition with the optimization objective to the planner
         planner->setProblemDefinition(setup.getProblemDefinition());
@@ -112,7 +108,7 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     else {
         // Set up the planner
         auto planner = std::make_shared<MyRRT>(si);
-        planner->setGoalBias(0.05); // Example: Adjust goal bias
+        planner->setGoalBias(0.1); // Example: Adjust goal bias
         setup.setPlanner(planner);
     }
 
@@ -235,21 +231,18 @@ void payloadSystemDemo(app::PayloadSystem &setup)
 
 int main(int argc, char ** /*unused*/)
 {
-    // Create MultiDronePlanning instance
     app::PayloadSystem multiDrone;
 
-    // Load Environment and Robot Meshes
     std::string meshDir = boost::filesystem::absolute("../src/meshes").string();
     multiDrone.setMeshPath({boost::filesystem::path(meshDir)});
-
-    multiDrone.setEnvironmentMesh(meshDir + "/empty_env.dae");
+    multiDrone.setEnvironmentMesh(meshDir + "/env_4.dae");
     multiDrone.setRobotMesh(meshDir + "/box_collision.dae");
-    
-    // Setup MultiDrone planning environment
-    payloadSystemSetup(multiDrone);
 
-    // Run MultiDrone planning demo
+    // multiDrone.getSpaceInformation()->setup();   // builds checker with meshes
+
+    payloadSystemSetup(multiDrone);
     payloadSystemDemo(multiDrone);
+
 
     if (!multiDrone.getPrintAllStates())
     {
@@ -262,8 +255,8 @@ int main(int argc, char ** /*unused*/)
 
     // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
 
-    system("python3 ../src/python/plot_trajectories_four.py");
+    // system("python3 ../src/python/plot_trajectories_four.py");
 
-    // system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
-    // system("python3 ../src/python/ompl_app_multiple.py");
+    system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
+    system("python3 ../src/python/ompl_app_multiple.py");
 }
