@@ -25,10 +25,11 @@ include_directories(${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS})
 
 # Find OMPL and OMPL.app
 find_package(ompl REQUIRED)
+find_package(fcl REQUIRED)
 
 add_executable(PayloadFourDrones src/PayloadFourDemo.cpp src/PayloadFourDrones.cpp)
-target_link_libraries(PayloadFourDrones PRIVATE ompl ompl_app ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)
-target_include_directories(PayloadFourDrones PRIVATE ${OMPL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} include)
+target_link_libraries(PayloadFourDrones PRIVATE ompl ompl_app fcl ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)
+target_include_directories(PayloadFourDrones PRIVATE ${OMPL_INCLUDE_DIRS} ${fcl_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS} include)
 
 # add_executable(PayloadTwoDrones src/PayloadTwoDemo.cpp src/PayloadTwoDrones.cpp)
 # target_link_libraries(PayloadTwoDrones PRIVATE ompl ompl_app ompl_app_base Boost::filesystem Boost::system Boost::serialization Python3::Python Python3::NumPy stdc++fs)

@@ -16,13 +16,13 @@
         <technique sid="standard">
           <phong>
             <ambient>
-              <color sid="ambient">1   1   1   1</color>
+              <color sid="ambient">0   1   0   1</color>
             </ambient>
             <diffuse>
-              <color sid="diffuse">1   1   1   1</color>
+              <color sid="diffuse">0   1   0   1</color>
             </diffuse>
             <specular>
-              <color sid="specular">1   1   1   1</color>
+              <color sid="specular">0   1   0   1</color>
             </specular>
           </phong>
         </technique>

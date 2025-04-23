@@ -1,0 +1,7 @@
+maxTorquePitchRoll,maxTorqueYaw,minThrust,maxThrust,maxDroneAngle,maxDroneVel,maxAnglePayload,maxPayloadVel,maxPayloadAngVel,maxTheta,maxThetaVel,thrustStd,torquePitchRollStd,torqueYawStd,sameControls,solveTime,printAllStates,useSST,distance
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,2,0,0,48.0509
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,2,0,1,38.892
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,4,0,0,67.0241
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,4,0,1,50.4699
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,6,0,0,15.3339
+0.01,0.005,0,60,70,20,70,10,0.1,50,20,1,0.001,0.0001,1,6,0,1,66.7401

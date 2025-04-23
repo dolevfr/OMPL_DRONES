@@ -55,6 +55,28 @@ namespace ompl
             /** \brief Segmentation fault otherwise */
             void inferProblemDefinitionBounds() override {}
 
+            bool setParam(const std::string& key, double val)   // returns true if the key was known
+            {
+                if      (key == "maxTorquePitchRoll")  maxTorquePitchRoll  = val;
+                else if (key == "maxTorqueYaw")        maxTorqueYaw        = val;
+                else if (key == "minThrust")           minThrust           = val;
+                else if (key == "maxThrust")           maxThrust           = val;
+                else if (key == "maxDroneAngle")       maxDroneAngle       = val;
+                else if (key == "maxDroneVel")         maxDroneVel         = val;
+                else if (key == "maxAnglePayload")     maxAnglePayload     = val;
+                else if (key == "maxPayloadVel")       maxPayloadVel       = val;
+                else if (key == "maxPayloadAngVel")    maxPayloadAngVel    = val;
+                else if (key == "maxTheta")            maxTheta            = val;
+                else if (key == "maxThetaVel")         maxThetaVel         = val;
+                else if (key == "thrustStd")           thrustStd           = val;
+                else if (key == "torquePitchRollStd")  torquePitchRollStd  = val;
+                else if (key == "torqueYawStd")        torqueYawStd        = val;
+                else if (key == "solveTime")           solveTime           = val;
+                else                                   return false;       // unknown key
+                return true;
+            }
+
+
             const Eigen::Vector3d& getStartPosition() const { return startPosition_; }
             const Eigen::Vector3d& getGoalPosition() const { return goalPosition_; }
 
@@ -77,8 +99,6 @@ namespace ompl
             double getTorqueYawStd() const { return torqueYawStd; }
             bool getSameControls() const { return sameControls; }
 
-
-            /** \brief Get the solve time for the system */
             double getSolveTime() const { return solveTime; }
 
             bool getPrintAllStates() const { return printAllStates; }
@@ -167,32 +187,33 @@ namespace ompl
             double payloadBeta = 0.1;                 // Payload linear damping coefficient
 
             // Inputs of drones
-            static constexpr double maxTorquePitchRoll = 0.05;
-            static constexpr double maxTorqueYaw = 0.005;
-            static constexpr double minThrust = 0;
-            static constexpr double maxThrust = 60;
+            double maxTorquePitchRoll = 0.01;
+            double maxTorqueYaw = 0.005;
+            double minThrust = 0;
+            double maxThrust = 60;
 
-            static constexpr double maxDroneAngle = 70;
-            static constexpr double maxDroneVel = 20;
+            double maxDroneAngle = 70;
+            double maxDroneVel = 20;
             
-            static constexpr double maxAnglePayload = 70;
-            static constexpr double maxPayloadVel = 10;
+            double maxAnglePayload = 70;
+            double maxPayloadVel = 10;
+            double maxPayloadAngVel = 0.1;
 
             // Angle of cable from vertical
-            static constexpr double maxTheta = 50;
-            static constexpr double maxThetaVel = 20;
+            double maxTheta = 50;
+            double maxThetaVel = 20;
 
             // Standard deviations for control inputs (RRT only)
             double thrustStd = 1;
-            double torquePitchRollStd = 0.005;
+            double torquePitchRollStd = 0.001;
             double torqueYawStd = 0.0001;
 
             bool sameControls = true; // true -> same controls for all drones, false -> different controls
 
-            Eigen::Vector3d startPosition_{-10.0, 0.0, 10.0};
-            Eigen::Vector3d goalPosition_{10.0, 0.0, 10.0};
+            Eigen::Vector3d startPosition_{-10.0, -40.0, 20.0};
+            Eigen::Vector3d goalPosition_{60.0, -15.0, 15.0};
         
-            double solveTime = 60;  
+            double solveTime = 60 * 1;  
             
             bool printAllStates = false; // Print all states to file
             

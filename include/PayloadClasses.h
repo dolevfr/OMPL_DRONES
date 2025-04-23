@@ -3,73 +3,73 @@
 
 #include "PayloadFourDrones.h"
 
-class PayloadSystemValidityChecker : public ompl::base::StateValidityChecker
-{
-public:
-    PayloadSystemValidityChecker(const ompl::base::SpaceInformationPtr &si, const ompl::app::PayloadSystem &system)
-        : ompl::base::StateValidityChecker(si), payloadSystem_(system)
-    {
-    }
+// class PayloadSystemValidityChecker : public ompl::base::StateValidityChecker
+// {
+// public:
+//     PayloadSystemValidityChecker(const ompl::base::SpaceInformationPtr &si, const ompl::app::PayloadSystem &system)
+//         : ompl::base::StateValidityChecker(si), payloadSystem_(system)
+//     {
+//     }
 
-    bool isValid(const ompl::base::State *state) const override
-    {
-        std::cout << "Checking state validity..." << std::endl;
-        // --- Collision Check ---
-        // Clone the state and enforce bounds
-        ompl::base::State *correctedState = si_->cloneState(state);
-        si_->getStateSpace()->enforceBounds(correctedState);
-        si_->freeState(correctedState);
+//     bool isValid(const ompl::base::State *state) const override
+//     {
+//         std::cout << "Checking state validity..." << std::endl;
+//         // --- Collision Check ---
+//         // Clone the state and enforce bounds
+//         ompl::base::State *correctedState = si_->cloneState(state);
+//         si_->getStateSpace()->enforceBounds(correctedState);
+//         si_->freeState(correctedState);
 
-        // --- Custom Tilt Constraint Check ---
-        const auto *compoundState = state->as<ompl::base::CompoundState>();
-        if (!compoundState)
-        {
-            std::cerr << "State is not a CompoundState!" << std::endl;
-            return false;
-        }
+//         // --- Custom Tilt Constraint Check ---
+//         const auto *compoundState = state->as<ompl::base::CompoundState>();
+//         if (!compoundState)
+//         {
+//             std::cerr << "State is not a CompoundState!" << std::endl;
+//             return false;
+//         }
 
-        // Payload tilt check:
-        const auto *payloadSE3State = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
-        Eigen::Quaterniond payloadQuat(
-            payloadSE3State->rotation().w,
-            payloadSE3State->rotation().x,
-            payloadSE3State->rotation().y,
-            payloadSE3State->rotation().z);
-        payloadQuat.normalize(); // Ensure normalization
+//         // Payload tilt check:
+//         const auto *payloadSE3State = compoundState->as<ompl::base::SE3StateSpace::StateType>(0);
+//         Eigen::Quaterniond payloadQuat(
+//             payloadSE3State->rotation().w,
+//             payloadSE3State->rotation().x,
+//             payloadSE3State->rotation().y,
+//             payloadSE3State->rotation().z);
+//         payloadQuat.normalize(); // Ensure normalization
 
-        double maxAngleCosPayload = std::cos(payloadSystem_.getMaxAnglePayload() * M_PI / 180.0);
-        if ((payloadQuat.x() * payloadQuat.x() + payloadQuat.y() * payloadQuat.y()) > (1 - maxAngleCosPayload) / 2)
-        {
-            return false;
-        }
+//         double maxAngleCosPayload = std::cos(payloadSystem_.getMaxAnglePayload() * M_PI / 180.0);
+//         if ((payloadQuat.x() * payloadQuat.x() + payloadQuat.y() * payloadQuat.y()) > (1 - maxAngleCosPayload) / 2)
+//         {
+//             return false;
+//         }
 
-        // Drone tilt check:
-        double maxAngleCosDrone = std::cos(payloadSystem_.getMaxDroneAngle() * M_PI / 180.0);
+//         // Drone tilt check:
+//         double maxAngleCosDrone = std::cos(payloadSystem_.getMaxDroneAngle() * M_PI / 180.0);
 
-        for (unsigned int i = 0; i < payloadSystem_.getRobotCount(); ++i)
-        {
-            unsigned int droneBaseIndex = 2 + i * 3; // Make sure this index is correct
-            const auto *droneSO3State = compoundState->as<ompl::base::SO3StateSpace::StateType>(droneBaseIndex);
-            Eigen::Quaterniond droneQuat(
-                droneSO3State->w,
-                droneSO3State->x,
-                droneSO3State->y,
-                droneSO3State->z);
-            droneQuat.normalize(); // Normalize the drone quaternion
+//         for (unsigned int i = 0; i < payloadSystem_.getRobotCount(); ++i)
+//         {
+//             unsigned int droneBaseIndex = 2 + i * 3; // Make sure this index is correct
+//             const auto *droneSO3State = compoundState->as<ompl::base::SO3StateSpace::StateType>(droneBaseIndex);
+//             Eigen::Quaterniond droneQuat(
+//                 droneSO3State->w,
+//                 droneSO3State->x,
+//                 droneSO3State->y,
+//                 droneSO3State->z);
+//             droneQuat.normalize(); // Normalize the drzone quaternion
 
-            if ((droneQuat.x() * droneQuat.x() + droneQuat.y() * droneQuat.y()) > (1 - maxAngleCosDrone) / 2)
-            {
-                return false;
-            }
-        }
+//             if ((droneQuat.x() * droneQuat.x() + droneQuat.y() * droneQuat.y()) > (1 - maxAngleCosDrone) / 2)
+//             {
+//                 return false;
+//             }
+//         }
 
-        // std::cout << "Number of valid states: " << ++validStates << std::endl;
-        return true;
-    }
+//         // std::cout << "Number of valid states: " << ++validStates << std::endl;
+//         return true;
+//     }
 
-private:
-    const ompl::app::PayloadSystem &payloadSystem_; // Reference to PayloadSystem
-};
+// private:
+//     const ompl::app::PayloadSystem &payloadSystem_; // Reference to PayloadSystem
+// };
 
 class PayloadSmoothDirectedControlSampler : public ompl::control::DirectedControlSampler
 {
@@ -115,7 +115,7 @@ public:
             {
                 double hover = (payloadSystem_->getDroneMass() +
                                 payloadSystem_->getPayloadMass() /
-                                payloadSystem_->getRobotCount()) * 9.81 * 2;
+                                payloadSystem_->getRobotCount()) * 9.81 * 1.05;
         
                 double *vals =
                     control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;

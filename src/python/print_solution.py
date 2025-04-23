@@ -15,9 +15,9 @@ def print_formatted_line(state):
         drone_so3 = state[base:base+4]
         drone_vel = state[base+4:base+7]
         cable = state[base+7:base+11]  # cable: 2 angles + 2 derivatives
-        # print(f"drone {i+1}: SO(3): {' '.join(f'{v:.3f}' for v in drone_so3)} | "
-        #       f"velocities: {' '.join(f'{v:.3f}' for v in drone_vel)} | "
-        #       f"cable: {' '.join(f'{v:.3f}' for v in cable)}")
+    #     print(f"drone {i+1}: SO(3): {' '.join(f'{v:.3f}' for v in drone_so3)} | "
+    #           f"velocities: {' '.join(f'{v:.3f}' for v in drone_vel)} | "
+    #           f"cable: {' '.join(f'{v:.3f}' for v in cable)}")
     # print()
     
     # Compute start index for extra numbers:

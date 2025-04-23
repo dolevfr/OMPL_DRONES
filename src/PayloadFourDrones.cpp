@@ -73,18 +73,18 @@ ompl::base::StateSpacePtr ompl::app::PayloadSystem::constructStateSpace()
     stateSpace->addSubspace(std::make_shared<base::SE3StateSpace>(), 1.0);
 
     // Add RealVector state space for the payload's velocity (6 dimensions)
-    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.1);
+    stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(6), 0.05);
 
     for (unsigned int i = 0; i < droneCount_; ++i)
     {
         // Add SO3 state space for orientation
-        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.02);
+        stateSpace->addSubspace(std::make_shared<base::SO3StateSpace>(), 0.05);
 
         // Add RealVector state space for velocity (3 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.02);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(3), 0.05);
 
         // Add RealVector state space for cable angles and velocities (4 dimensions)
-        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.02);
+        stateSpace->addSubspace(std::make_shared<base::RealVectorStateSpace>(4), 0.05);
     }
 
     stateSpace->lock();
@@ -310,19 +310,20 @@ void ompl::app::PayloadSystem::setDefaultBounds()
 {
     // Enforce payload position bounds (-300, 600) for x, y, z
     base::RealVectorBounds positionBounds(3); // SE3 position bounds
-    positionBounds.setLow(0, -11); // x lower bound
-    positionBounds.setHigh(0, 11); // x upper bound
-    positionBounds.setLow(1, -11); // y lower bound
-    positionBounds.setHigh(1, 11); // y upper bound
+    positionBounds.setLow(0, -22); // x lower bound
+    positionBounds.setHigh(0, 88); // x upper bound
+    positionBounds.setLow(1, -53); // y lower bound
+    positionBounds.setHigh(1, 50); // y upper bound
     positionBounds.setLow(2, -1); // z lower bound
-    positionBounds.setHigh(2, 28); // z upper bound
+    positionBounds.setHigh(2, 27); // z upper bound
     getStateSpace()->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(0)->setBounds(positionBounds);
 
     // Enforce payload velocity bounds (-10, 10) for x, y, z, and angular velocities
-    base::RealVectorBounds velocityBounds(6); // Bounds for payload velocity (linear and angular)
-    velocityBounds.setLow(-maxPayloadVel);
-    velocityBounds.setHigh(maxPayloadVel);
-    getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velocityBounds);
+    base::RealVectorBounds velBounds(6);
+    for(unsigned i=0;i<3;++i){velBounds.setLow(i,-maxPayloadVel);velBounds.setHigh(i,maxPayloadVel);}
+    for(unsigned i=3;i<6;++i){velBounds.setLow(i,-maxPayloadAngVel);velBounds.setHigh(i,maxPayloadAngVel);}
+    getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velBounds);
+    
 
     // Loop through each drone and enforce bounds
     for (unsigned int i = 0; i < droneCount_; ++i)
