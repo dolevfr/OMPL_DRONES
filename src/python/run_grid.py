@@ -5,21 +5,25 @@ Grid-search runner for PayloadFourDrones
 • executes every parameter combination
 • collects distance → grid_results.csv
 """
-import csv, itertools, os, subprocess, sys
+import csv, itertools, os, subprocess, shutil, math
 from collections import OrderedDict as OD
 import pandas as pd, pathlib, webbrowser, html
+from pathlib import Path
+
+# Number of minutes to run the grid search
+TARGET_MIN   = 1/6  # minutes
 
 # ── 1. parameter “vectors” ───────────────────────────────────────
 P = OD([
     # additional options
     ("printAllStates",     [0]),                # 0=false 1=true
-    ("useSST",             [0,1]),                # 0=RRT 1=SST    
+    ("useSST",             [1]),                # 0=RRT 1=SST 
     
     # controls & torques
-    ("maxTorquePitchRoll", [0.01, 0.1]),
+    ("maxTorquePitchRoll", [0.01]),
     ("maxTorqueYaw",       [0.005]),
     ("minThrust",          [0]),
-    ("maxThrust",          [30,45,60]),
+    ("maxThrust",          [40]), 
 
     # drone limits
     ("maxDroneAngle",      [70]),
@@ -27,27 +31,53 @@ P = OD([
 
     # payload limits
     ("maxAnglePayload",    [70]),
-    ("maxPayloadVel",      [10]),
-    ("maxPayloadAngVel",   [0.1, 1, 5]),
+    ("maxPayloadVel",      [8]),
+    ("maxPayloadAngVel",   [1]), 
 
     # cable limits
-    ("maxTheta",           [40,60]),
+    ("maxTheta",           [60]), 
     ("maxThetaVel",        [20]),
 
     # sampling std-devs
-    ("thrustStd",          [1,5]),
+    ("thrustStd",          [5]),
     ("torquePitchRollStd", [0.1]),
     ("torqueYawStd",       [0.0001]),
 
     # misc
-    ("sameControls",       [0,1]),                # 1=true 0=false
+    ("sameControls",       [1]),                # 1=true 0=false 
     ("solveTime",          [10]),
 ])
 
+solve_time = P["solveTime"][0]                 # seconds (single value)
+
+base_combo_count = math.prod(len(v) for k, v in P.items())
+total_seconds    = TARGET_MIN * 60
+repeats_needed   = max(1, math.ceil(total_seconds / (base_combo_count * solve_time)))
+
+P["repeat"] = list(range(repeats_needed))
+print(f"💡  Will perform {repeats_needed} identical repeats "
+      f"of each base combination "
+      f"→  total experiments = {base_combo_count * repeats_needed}")
+
 # ── 2. build the project (if needed) ─────────────────────────────
-root_dir  = os.path.abspath(os.path.dirname(__file__))
-build_dir = os.path.join(root_dir, "../../build")
-exe_path  = os.path.join(build_dir, "PayloadFourDrones")
+script_dir = os.path.abspath(os.path.dirname(__file__))          # …/src/python
+root_dir   = os.path.abspath(os.path.join(script_dir, "..", ".."))  # ← NEW
+build_dir  = os.path.join(root_dir, "build")
+exe_path   = os.path.join(build_dir, "PayloadFourDrones")
+py_dir     = script_dir                                          # helper scripts live here
+
+# ---------- clean up stale solution files ------------------------
+for f in (
+        os.path.join(build_dir, "solution_path.txt"),
+        os.path.join(build_dir, "solution_path_se3.txt"),
+        os.path.join(build_dir, "best_distance.txt"),
+        os.path.join(root_dir,  "best_solution_path.txt"),
+):
+    try:
+        os.remove(f)
+    except FileNotFoundError:
+        pass     # fine – nothing to delete
+
 
 print("📦  Building in", build_dir)
 subprocess.run(["make", "-j", str(os.cpu_count())],
@@ -63,28 +93,55 @@ with open(csv_file, "w", newline="") as f:
     # ── 4. iterate over Cartesian product ────────────────────────
     for values in itertools.product(*P.values()):
         param_set = dict(zip(P.keys(), values))
-        cmd = [exe_path] + [f"--{k}={v}" for k, v in param_set.items()]
+        cmd = [exe_path] + [f"--{k}={v}" for k, v in param_set.items() if k != "repeat"]
 
         print("▶", " ".join(cmd))
         completed = subprocess.run(cmd, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, text=True)
+                                   stderr=subprocess.STDOUT, text=True, cwd=build_dir)
 
-        # look for the line we added in C++
+        # ------------- extract distance from program output -----------------
         dist = "NaN"
         for line in completed.stdout.splitlines():
             if line.startswith("RESULT distance="):
                 dist = line.split("=", 1)[1].strip()
-                break
+            # show any “Saved new BEST path…” message the C++ printed
+            if line.startswith("🆕") or line.startswith("ℹ️"):
+                print("   ", line)
 
+        # convert to float (keep inf on parsing errors)
+        try:
+            dist_val = float(dist)
+        except ValueError:
+            dist_val = float('inf')
+
+        # ------------- keep / report current best ---------------------------
+        new_best = False
+        if 'best_dist' not in globals():
+            best_dist = float('inf')
+
+        if dist_val < best_dist:
+            new_best = True
+            best_dist = dist_val
+            shutil.copy2(os.path.join(build_dir, "solution_path.txt"),
+                         os.path.join(root_dir,  "best_solution_path.txt"))
+
+        # show concise status line
+        tag = "(NEW BEST)" if new_best else ""
+        print(f"   distance = {dist} {tag}")
+
+        # ------------- write CSV immediately --------------------------------
         writer.writerow(list(values) + [dist])
+        f.flush()
+
+
 
 print("\n✅ finished – results in", csv_file)
 
 # ── 5. display results in a browser tab ──────────────────────────
-import pandas as pd, pathlib, webbrowser, html
+csv_file  = os.path.join(root_dir, "grid_results.csv")  # works unchanged
+html_path = pathlib.Path(csv_file).with_suffix(".html") # works unchanged
+df        = pd.read_csv(csv_file)
 
-df = pd.read_csv(csv_file)
-html_path = pathlib.Path(csv_file).with_suffix(".html")
 
 style = """
 <style>
@@ -127,5 +184,32 @@ except webbrowser.Error:
     webbrowser.open_new_tab(url)
 
 print(f"🔎  Results opened: {url}")
+
+# ── 6.  post-processing: copy best path → build & launch GUI ──────
+best_txt = os.path.join(root_dir,  "best_solution_path.txt")
+if os.path.exists(best_txt):
+    # a)  make it the “official” name inside build/
+    dest = os.path.join(build_dir, "solution_path.txt")
+    shutil.copy2(best_txt, dest)
+
+    # b)  run extract_se3.py  (cwd = build so relative paths match)
+    py_dir = os.path.join(root_dir, "src", "python")
+    subprocess.run(
+        ["python3",
+         os.path.join(py_dir, "extract_se3.py"),
+         "solution_path.txt",           # in build/
+         "solution_path_se3.txt"],      # output in build/
+        cwd=build_dir, check=True)
+
+    # c)  launch the OMPL.app visualizer (still in build/)
+    subprocess.run(
+        ["python3",
+         os.path.join(py_dir, "ompl_app_multiple.py")],
+        cwd=build_dir, check=True)
+
+    print("🎞️  Animation of BEST path launched.")
+else:
+    print("⚠️  No best_solution_path.txt found → nothing to visualise.")
+
 
 

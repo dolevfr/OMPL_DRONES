@@ -40,6 +40,7 @@ void payloadSystemSetup(app::PayloadSystem &setup)
             start->as<base::RealVectorStateSpace::StateType>(baseIndex + 2)->values[j] = 0.0;
         }
     }
+
     base::ScopedState<base::CompoundStateSpace> goal(stateSpace);
     const Eigen::Vector3d &goalPos = setup.getGoalPosition();
     goal->as<base::SE3StateSpace::StateType>(0)->setXYZ(goalPos.x(), goalPos.y(), goalPos.z());
@@ -64,11 +65,6 @@ void payloadSystemSetup(app::PayloadSystem &setup)
     }
 
     setup.setStartAndGoalStates(start, goal);
-
-    // Ensure state space and si_ are initialized first
-    auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(setup.getSpaceInformation(), setup);
-    setup.getSpaceInformation()->setStateValidityChecker(validityChecker);
-
 }
 
 
@@ -79,25 +75,27 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     std::cout << "\n\n***** Planning for a " << setup.getName() << " *****\n" << std::endl;
 
     auto si = setup.getSpaceInformation();
-    
-    auto sampler = std::make_shared<PayloadSmoothDirectedControlSampler>(si.get(), &setup);
-    si->setDirectedControlSamplerAllocator([sampler](const ompl::control::SpaceInformation *) {
-        return sampler;
-    });    
+
+    si->setDirectedControlSamplerAllocator(
+        [&setup](const ompl::control::SpaceInformation *si) {
+            return std::make_shared<PayloadSmoothDirectedControlSampler>(si, &setup);
+        }
+    );
 
     std::cout << "Setting up the planner...\n";
     
 
     if (setup.getUseSST()) {
-        auto objective = std::make_shared<ompl::base::PathLengthOptimizationObjective>(si);
+        auto objective = std::make_shared<ompl::base::MechanicalWorkOptimizationObjective>(si);
 
         // Set the optimization objective in the problem definition
         setup.getProblemDefinition()->setOptimizationObjective(objective);
 
-        auto planner = std::make_shared<ompl::control::SST>(si);
+        // auto planner = std::make_shared<MySST>(si);
+        auto planner = std::make_shared<MySST>(si, &setup);
         planner->setGoalBias(0.05);
-        planner->setSelectionRadius(3.0);  // Adjust for faster convergence
-        planner->setPruningRadius(1.0);    // Helps control sparsity
+        planner->setSelectionRadius(0.1);  // Adjust for faster convergence
+        planner->setPruningRadius(0.05);    // Helps control sparsity
 
         // Attach the problem definition with the optimization objective to the planner
         planner->setProblemDefinition(setup.getProblemDefinition());
@@ -107,7 +105,7 @@ void payloadSystemDemo(app::PayloadSystem &setup)
     }
     else {
         // Set up the planner
-        auto planner = std::make_shared<control::RRT>(si);
+        auto planner = std::make_shared<MyRRT>(si);
         planner->setGoalBias(0.05); // Example: Adjust goal bias
         setup.setPlanner(planner);
     }
@@ -248,7 +246,7 @@ int main(int argc, char ** /*unused*/)
     std::string meshDir = boost::filesystem::absolute("../src/meshes").string();
     multiDrone.setMeshPath({boost::filesystem::path(meshDir)});
 
-    multiDrone.setEnvironmentMesh(meshDir + "/empty_env.dae");
+    multiDrone.setEnvironmentMesh(meshDir + "/Apartment_env.dae");
     multiDrone.setRobotMesh(meshDir + "/box_collision.dae");
     
     // Setup MultiDrone planning environment
@@ -268,8 +266,8 @@ int main(int argc, char ** /*unused*/)
 
     // system("python3 ../src/python/print_solution.py ../build/solution_path.txt");
 
-    system("python3 ../src/python/plot_trajectories_one.py");
+    // system("python3 ../src/python/plot_trajectories_one.py");
 
-    // system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
-    // system("python3 ../src/python/ompl_app_multiple.py");
+    system("python3 ../src/python/extract_se3.py solution_path.txt solution_path_se3.txt");
+    system("python3 ../src/python/ompl_app_multiple.py");
 }

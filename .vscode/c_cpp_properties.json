@@ -1,20 +1,45 @@
+// {
+//     "configurations": [
+//         {
+//             "name": "Linux",
+//             "includePath": [
+//                 "/usr/include/python3.10",
+//                 "/usr/lib/python3/dist-packages/numpy/core/include",
+//                 "/usr/local/include/ompl-1.6",
+//                 "/usr/local/include",
+//                 "/usr/local/include/osqp",
+//                 "/usr/include/eigen3",
+//                 "/usr/include",
+//                 "/opt/openrobots/include",
+//                 "/opt/osqp-eigen/include",
+//                 "${workspaceFolder}/include",
+//                 "${workspaceFolder}/src"
+//             ],
+//             "defines": [],
+//             "compilerPath": "/usr/bin/gcc",
+//             "cStandard": "c11",
+//             "cppStandard": "c++17",
+//             "intelliSenseMode": "linux-gcc-x64"
+//         }
+//     ],
+//     "version": 4
+// }
+
 {
     "configurations": [
-        {
-            "name": "Linux",
-            "includePath": [
-                "/usr/include/python3.10",
-                "/usr/lib/python3/dist-packages/numpy/core/include",
-                "/usr/local/include/ompl-1.6",
-                "/usr/include/eigen3",
-                "${workspaceFolder}/**"
-            ],
-            "defines": [],
-            "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "linux-gcc-x64"
-        }
+      {
+        "name": "Linux",
+        "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+        // You can leave includePath minimal now
+        "includePath": [
+          "${workspaceFolder}/include",
+          "${workspaceFolder}/src"
+        ],
+        "intelliSenseMode": "linux-gcc-x64",
+        "cppStandard": "c++17",
+        "compilerPath": "/usr/bin/gcc"
+      }
     ],
     "version": 4
-}
+  }
+  

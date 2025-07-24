@@ -42,15 +42,15 @@ ompl::app::PayloadSystem::PayloadSystem()
             postPropagate(state, control, duration, result);
         }));
 
-    si_->setup();
+    // si_->setStateValidityCheckingResolution(0.001);
 
-    si_->setStateValidityCheckingResolution(0.01);
-
-    auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(si_, *this);
-    si_->setStateValidityChecker(validityChecker);
+    // auto validityChecker = std::make_shared<PayloadSystemValidityChecker>(si_, *this);
+    // si_->setStateValidityChecker(validityChecker);
 
     auto motionValidator = std::make_shared<ompl::base::DiscreteMotionValidator>(si_);
     si_->setMotionValidator(motionValidator);
+
+    si_->setup();
 }
 
 ompl::base::ScopedState<> ompl::app::PayloadSystem::getDefaultStartState() const
@@ -180,33 +180,12 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         double forceTheta = droneForce.dot(thetaDir);
         double forcePhi = droneForce.dot(phiDir);
 
-        // // Construct Omega(omega) matrix
-        // Eigen::Matrix4d Omega;
-        // Omega << 0, -omega.x(), -omega.y(), -omega.z(),
-        //     omega.x(), 0, omega.z(), -omega.y(),
-        //     omega.y(), -omega.z(), 0, omega.x(),
-        //     omega.z(), omega.y(), -omega.x(), 0;
-
-        // // Convert quaternion to 4D vector
-        // Eigen::Vector4d quatVec(droneRot.w(), droneRot.x(), droneRot.y(), droneRot.z());
-
-        // // Compute quaternion derivative
-        // Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
-
         Eigen::Quaterniond omega_quat(0, omega.x(), omega.y(), omega.z());
         Eigen::Quaterniond q_dot = Eigen::Quaterniond(0.5 * omega_quat.coeffs()) * droneRot;
-        
         
         // Angular acceleration calculation
         Eigen::Vector3d torque(u[i * 4 + 1], u[i * 4 + 2], u[i * 4 + 3]); // Control inputs for torques
         Eigen::Vector3d angularAccel = droneInertia.inverse() * (torque - droneBeta * omega);
-
-
-        // // Update qdot for quaternion
-        // qdot[baseIndex + 0] = quatDot.x();
-        // qdot[baseIndex + 1] = quatDot.y();
-        // qdot[baseIndex + 2] = quatDot.z();
-        // qdot[baseIndex + 3] = quatDot.w();
 
         qdot[baseIndex + 0] = q_dot.x();
         qdot[baseIndex + 1] = q_dot.y();
@@ -233,18 +212,6 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
         payloadTorque += corner.cross(forceOnCable); // Torque on the payload
     }
 
-    // Eigen::Matrix4d Omega;
-    // Omega << 0, -payloadAngVel.x(), -payloadAngVel.y(), -payloadAngVel.z(),
-    //     payloadAngVel.x(), 0, payloadAngVel.z(), -payloadAngVel.y(),
-    //     payloadAngVel.y(), -payloadAngVel.z(), 0, payloadAngVel.x(),
-    //     payloadAngVel.z(), payloadAngVel.y(), -payloadAngVel.x(), 0;
-
-    // // Convert quaternion to 4D vector
-    // Eigen::Vector4d quatVec(payloadRot.w(), payloadRot.x(), payloadRot.y(), payloadRot.z());
-
-    // // Compute quaternion derivative
-    // Eigen::Vector4d quatDot = 0.5 * Omega * quatVec;
-
     Eigen::Quaterniond omega_quat_p(0, payloadAngVel.x(), payloadAngVel.y(), payloadAngVel.z());
     Eigen::Quaterniond q_dot_p = Eigen::Quaterniond(0.5 * omega_quat_p.coeffs()) * payloadRot;
 
@@ -256,11 +223,6 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
     qdot[0] = payloadVel.x();
     qdot[1] = payloadVel.y();
     qdot[2] = payloadVel.z();
-
-    // qdot[3] = quatDot.x();
-    // qdot[4] = quatDot.y();
-    // qdot[5] = quatDot.z();
-    // qdot[6] = quatDot.w();
 
     qdot[3] = q_dot_p.x();
     qdot[4] = q_dot_p.y();
@@ -278,9 +240,6 @@ void ompl::app::PayloadSystem::ode(const control::ODESolver::StateType &q, const
 
 void ompl::app::PayloadSystem::postPropagate(const base::State * /*state*/, const control::Control *control, const double /*duration*/, base::State *result)
 {   
-    // Ensure the custom validity checker is always used
-    si_->setStateValidityChecker(std::make_shared<PayloadSystemValidityChecker>(si_, *this));
-
     // Access the CompoundStateSpace and subspaces
     const base::CompoundStateSpace *cs = getStateSpace()->as<base::CompoundStateSpace>();
 
@@ -332,15 +291,20 @@ void ompl::app::PayloadSystem::setDefaultBounds()
 {
     // Enforce payload position bounds (-300, 600) for x, y, z
     base::RealVectorBounds positionBounds(3); // SE3 position bounds
-    positionBounds.setLow(-1000);
-    positionBounds.setHigh(1000);
+    positionBounds.setLow(0, -22); // x lower bound
+    positionBounds.setHigh(0, 88); // x upper bound
+    positionBounds.setLow(1, -53); // y lower bound
+    positionBounds.setHigh(1, 50); // y upper bound
+    positionBounds.setLow(2, -1); // z lower bound
+    positionBounds.setHigh(2, 27); // z upper bound
     getStateSpace()->as<base::CompoundStateSpace>()->as<base::SE3StateSpace>(0)->setBounds(positionBounds);
 
     // Enforce payload velocity bounds (-10, 10) for x, y, z, and angular velocities
-    base::RealVectorBounds velocityBounds(6); // Bounds for payload velocity (linear and angular)
-    velocityBounds.setLow(-maxPayloadVel);
-    velocityBounds.setHigh(maxPayloadVel);
-    getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velocityBounds);
+    base::RealVectorBounds velBounds(6);
+    for(unsigned i=0;i<3;++i){velBounds.setLow(i,-maxPayloadVel);velBounds.setHigh(i,maxPayloadVel);}
+    for(unsigned i=3;i<6;++i){velBounds.setLow(i,-maxPayloadAngVel);velBounds.setHigh(i,maxPayloadAngVel);}
+    getStateSpace()->as<base::CompoundStateSpace>()->as<base::RealVectorStateSpace>(1)->setBounds(velBounds);
+    
 
     // Loop through each drone and enforce bounds
     for (unsigned int i = 0; i < droneCount_; ++i)

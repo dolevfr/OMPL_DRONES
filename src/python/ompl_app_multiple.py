@@ -164,7 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def openEnvironment(self):
         # Always load the fixed environment mesh.
-        fname = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/Apartment_env.dae"
+        fname = "../meshes/Apartment_env.dae"
         # print("Loading environment mesh from:", fname)
         self.environmentFile = fname
         self.omplSetup.setEnvironmentMesh(self.environmentFile)
@@ -180,8 +180,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def openRobot(self):
         # Always load fixed meshes: box for the first SE(3), drone for additional ones.
-        fname_box = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/box.dae"
-        fname_drone = "/home/dolev/Desktop/Research/OMPL_drones/src/meshes/drone.dae"
+        fname_box = "../meshes/box.dae"
+        fname_drone = "../meshes/drone.dae"
         
         # print("Loading robot mesh: box from", fname_box)
         self.robotFile = fname_box
@@ -217,7 +217,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def openFixedPath(self):
         # Load a fixed path file instead of using a file dialog.
-        fname = "/home/dolev/Desktop/Research/OMPL_drones/build/solution_path_se3.txt"
+        fname = "trajectory_se3.txt"
         # print("Loading fixed path file from:", fname)
         try:
             path = []
@@ -238,7 +238,6 @@ class MainWindow(QtWidgets.QMainWindow):
                         state_values = values[i * 7: (i + 1) * 7]
                         path[i].append(self._arrayToSE3State(state_values))
             self.path = path  # Store the paths for all robots
-            # print("Loaded path for", num_robots, "robots")
             
             # Send the multi-robot paths to the GLViewer
             self.mainWidget.glViewer.setSolutionPaths(self.path)

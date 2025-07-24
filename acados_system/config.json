@@ -1,0 +1,24 @@
+{
+  "payload_pos_w": 5,
+  "payload_vel_w": 1,
+  "payload_quat_w": [
+    0,
+    0.1,
+    0.1,
+    0
+  ],
+  "drone_quat_w": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "payload_angvel_w": 0.01,
+  "drone_angvel_w": 0.01,
+  "cable_angles_w": 0.01,
+  "N": 10,
+  "velocity_ref": 1,
+  "r_T": 0.1,
+  "r_tau": 0.01,
+  "W_Tf": 0.001
+}

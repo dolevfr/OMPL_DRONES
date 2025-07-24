@@ -1,7 +1,7 @@
 #ifndef PAYLOAD_CLASSES_H
 #define PAYLOAD_CLASSES_H
 
-#include "PayloadFourDrones.h"
+#include "PayloadOneDrone.h"
 
 // class PayloadSystemValidityChecker : public ompl::base::StateValidityChecker
 // {
@@ -115,7 +115,7 @@ public:
             {
                 double hover = (payloadSystem_->getDroneMass() +
                                 payloadSystem_->getPayloadMass() /
-                                payloadSystem_->getRobotCount()) * 9.81 * 1.05;
+                                payloadSystem_->getRobotCount()) * 9.81 * 1.2;
         
                 double *vals =
                     control->as<ompl::control::RealVectorControlSpace::ControlType>()->values;
