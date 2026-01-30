@@ -1,0 +1,23 @@
+Error: Custom { kind: InvalidData, error: Error("expected `:`", line: 16248, column: 22) }
+[common.py] Loading config from: trial_runs/trial_2/config.json
+[common.py] Loaded config values:
+Warning: Full featured acados requires CasADi version >= 3.7, got 3.6.7.
+Traceback (most recent call last):
+  File "/home/dolev/Desktop/Research/OMPL_drones/acados_system/main.py", line 127, in <module>
+    custom_ocp.setup_acados_ocp()
+  File "/home/dolev/Desktop/Research/OMPL_drones/acados_system/acados_settings.py", line 224, in setup_acados_ocp
+    self.solver = AcadosOcpSolver(ocp, json_file = "planner_ocp.json")
+  File "/home/dolev/acados/interfaces/acados_template/acados_template/acados_ocp_solver.py", line 231, in __init__
+    self.generate(acados_ocp, json_file=acados_ocp.json_file, simulink_opts=simulink_opts, cmake_builder=cmake_builder, verbose=verbose)
+  File "/home/dolev/acados/interfaces/acados_template/acados_template/acados_ocp_solver.py", line 132, in generate
+    acados_ocp.render_templates(cmake_builder=cmake_builder)
+  File "/home/dolev/acados/interfaces/acados_template/acados_template/acados_ocp.py", line 1221, in render_templates
+    render_template(tup[0], tup[1], output_dir, json_path)
+  File "/home/dolev/acados/interfaces/acados_template/acados_template/utils.py", line 310, in render_template
+    raise RuntimeError(f'Rendering of {in_file} failed!\n\nAttempted to execute OS command:\n{os_cmd}\n\n')
+RuntimeError: Rendering of main.in.c failed!
+
+Attempted to execute OS command:
+/home/dolev/acados-install/bin/t_renderer '/home/dolev/acados/interfaces/acados_template/acados_template/c_templates_tera/**/*' 'main.in.c' '/home/dolev/Desktop/Research/OMPL_drones/acados_system/planner_ocp.json' 'main_drone_FrenSer.c'
+
+

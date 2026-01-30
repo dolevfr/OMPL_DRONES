@@ -11,13 +11,13 @@ import json
 
 
 def getTrack():
-    track_file = os.path.join(os.path.dirname(__file__), "../src/python/geometric_path.txt")
+    track_file = os.path.join(os.path.dirname(__file__), "pos_ref.txt")
     # load all the data rows (skip only the header)
     array = np.loadtxt(track_file, skiprows=1)
     # keep every data row, including the very first one at s=0
-    xref = array[700:,0]
-    yref = array[700:,1]
-    zref = array[700:,2]
+    xref = array[:,0]
+    yref = array[:,1]
+    zref = array[:,2]
 
     return xref, yref, zref
 
@@ -97,63 +97,73 @@ maxCableAngleVel = 10.0              # [rad/s]
 DRONE_COUNT = 4  # Set to your number of drones
 
 
-N = 10  # shooting nodes / horizon
-N_lookahead = 3  # lookahead for path following
-
-velocity_ref = 3.0  # [m/s] reference velocity for path following
-
-payload_pos_w    = 1
-payload_vel_w    = 0.0
-payload_accel_w  = 0.001
-
-payload_quat_w   = [0.0, 0.001, 0.001, 0.0]
-drone_quat_w     = [0.0, 0.0, 0.0, 0.0]
-
-payload_angvel_w = 0.0001
-drone_angvel_w   = 0.0
-cable_angles_w   = 0.0
-
-r_T   = 0.0001
-r_tau = 0.0001
-
-W_Tf = 0.001
-T_f_initial = 0.3
+payload_pos_w    = 9.81753931330093
+payload_vel_w    = 0.191324202558108
+payload_accel_w  = 0.101040322577169
+payload_quat_w   = [
+    0.0906526699893534,
+    0.231870121357868,
+    0.246607324703919,
+    0.0201462697714508
+]
+drone_quat_w     = [
+    0.272467757523852,
+    0.279022962377033,
+    0.0379100888996108,
+    0.291848075042411
+]
+payload_angvel_w = 0.263800935539326
+drone_angvel_w   = 0.242434653206998
+cable_angles_w   = 0.239028910167166
+N = 11  # shooting nodes / horizon
+velocity_ref = 4.48465183171528
+r_T   = 0.095294066664569
+r_tau = 0.132363467070303
+W_Tf = 0.124419682092534
+T_f_initial = 1.58763406393806
+N_lookahead = 5
 
 # # Best values for weights so far
 
-# N = 50  # shooting nodes / horizon
-# N_lookahead = 5  # lookahead for path following
+# payload_pos_w    = 9.81753931330093
+# payload_vel_w    = 0.191324202558108
+# payload_accel_w  = 0.101040322577169
+# payload_quat_w   = [
+#     0.0906526699893534,
+#     0.231870121357868,
+#     0.246607324703919,
+#     0.0201462697714508
+# ]
+# drone_quat_w     = [
+#     0.272467757523852,
+#     0.279022962377033,
+#     0.0379100888996108,
+#     0.291848075042411
+# ]
+# payload_angvel_w = 0.263800935539326
+# drone_angvel_w   = 0.242434653206998
+# cable_angles_w   = 0.239028910167166
+# N = 11  # shooting nodes / horizon
+# velocity_ref = 4.48465183171528
+# r_T   = 0.095294066664569
+# r_tau = 0.132363467070303
+# W_Tf = 0.124419682092534
+# T_f_initial = 1.58763406393806
+# N_lookahead = 5
 
-# payload_pos_w    = 1
-# payload_vel_w    = 0.0
-# payload_accel_w  = 0.1
 
-# payload_quat_w   = [0.0, 1.0, 1.0, 0.0]
-# drone_quat_w     = [0.0, 0.0, 0.0, 0.0]
+CONFIG_PATH = "config.json"
+def _try_override_from_config(obj):
+    """Override globals in this module using config.json if present."""
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r") as f:
+            config = json.load(f)
+        for k, v in config.items():
+            # Only update if this variable already exists (optional, but safer)
+            if k in obj:
+                obj[k] = v
 
-# payload_angvel_w = 0.01
-# drone_angvel_w   = 0.01
-# cable_angles_w   = 0.005
-
-# r_T   = 0.01
-# r_tau = 0.001
-
-# W_Tf = 0.05
-# T_f_initial = 0.3
-
-
-# CONFIG_PATH = "config.json"
-# def _try_override_from_config(obj):
-#     """Override globals in this module using config.json if present."""
-#     if os.path.exists(CONFIG_PATH):
-#         with open(CONFIG_PATH, "r") as f:
-#             config = json.load(f)
-#         for k, v in config.items():
-#             # Only update if this variable already exists (optional, but safer)
-#             if k in obj:
-#                 obj[k] = v
-
-# _try_override_from_config(globals())
+_try_override_from_config(globals())
 
 
 # timing parameters (you already have these)

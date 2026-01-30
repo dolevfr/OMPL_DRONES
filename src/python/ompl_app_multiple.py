@@ -1110,7 +1110,7 @@ class GLViewer(QtOpenGL.QGLWidget):
                 else:
                     # Show all states simultaneously
                     n = len(robotPath)
-                    nmax = 20
+                    nmax = 1e8
                     if n < nmax:
                         indices = range(n)
                     else:

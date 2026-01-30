@@ -25,8 +25,8 @@ class AcadosCustomOcp:
         self.last_nn_idx = 0
         self.i0 = 1
 
-        
-
+    def update_initial_state(self, new_zeta_0):
+        self.zeta_0 = np.copy(new_zeta_0)
 
     def setup_acados_ocp(self):
         '''Formulate acados OCP'''
@@ -223,13 +223,6 @@ class AcadosCustomOcp:
         self.solver = AcadosOcpSolver(ocp, json_file = "planner_ocp.json")
         self.integrator = AcadosSimSolver(ocp)
 
-        print("init_zeta =", init_zeta)
-        print("lbx =", ocp.constraints.lbx)
-        print("ubx =", ocp.constraints.ubx)
-        # print("Is in bounds:", np.all(init_zeta >= ocp.constraints.lbx), np.all(init_zeta <= ocp.constraints.ubx))
-        print("T_f_initial =", T_f_initial)
-
-
         return True
 
 
@@ -355,7 +348,7 @@ class AcadosCustomOcp:
             # Assemble reference
             full_ref = np.concatenate([X_REF, U_REF, np.zeros(3), np.array([T_f_initial])])
             full_ref[0:3] = [xj, yj, zj]
-            # full_ref[7:10] = v_ref
+            full_ref[7:10] = v_ref
 
             # print(f"[cost_update_ref] stage {j}: idx={idx}, pos_ref=({xj:.3f}, {yj:.3f}, {zj:.3f})")
             
@@ -402,4 +395,3 @@ class AcadosCustomOcp:
     def get_cost(self):
         cost = self.solver.get_cost()
         return cost
-

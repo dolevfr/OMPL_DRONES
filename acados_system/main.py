@@ -123,9 +123,9 @@ if __name__ == '__main__':
     try:
         plan_ocp(custom_ocp)
         # os.system("python3 animate_trajectories.py")
-        os.system("python3 plot_trajectories_one.py")
+        # os.system("python3 plot_trajectories_one.py")
     except Exception as e:
         print("Planning failed:", e)
         print("Partial trajectory written to trajectory.txt")
         # os.system("python3 animate_trajectories.py")
-        os.system("python3 plot_trajectories_one.py")
+        # os.system("python3 plot_trajectories_one.py")

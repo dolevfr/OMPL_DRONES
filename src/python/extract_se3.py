@@ -56,8 +56,8 @@ def compute_se3_line(state):
         # Compute cable (and thus drone) position in Cartesian coordinates
         cable_vector = np.array([
             l * np.sin(theta) * np.cos(phi),
-            l * np.sin(theta) * np.sin(phi),
-            l * np.cos(theta)
+            - l * np.cos(theta) ,
+            l * np.sin(theta) * np.sin(phi)
         ])
         # Attach drone to corresponding payload top-corner (wrap if needed)
         origin = cable_origins[j % len(cable_origins)]
@@ -75,6 +75,10 @@ def compute_se3_line(state):
 
 def process_file(input_file, output_file):
     data = np.loadtxt(input_file)
+    max_lines = 1000
+    if data.shape[0] > max_lines:
+        indices = np.random.choice(data.shape[0], max_lines, replace=False)
+        data = data[indices]
     output_data = np.array([compute_se3_line(line[:57]) for line in data])
     np.savetxt(output_file, output_data, fmt="%.6f")
 

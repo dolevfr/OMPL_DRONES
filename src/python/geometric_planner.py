@@ -28,7 +28,7 @@ setup.setPlanner(planner)
 
 # define start state
 start = ob.State(si)
-start().setX(-10)
+start().setX(50)
 start().setY(-40)
 start().setZ(20)
 start().rotation().setIdentity()

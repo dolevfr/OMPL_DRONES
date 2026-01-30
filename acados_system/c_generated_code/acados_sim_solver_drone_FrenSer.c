@@ -172,7 +172,7 @@ int drone_FrenSer_acados_sim_create(drone_FrenSer_sim_solver_capsule * capsule)
     /* initialize parameter values */
     double* p = calloc(np, sizeof(double));
     
-    p[0] = 0.3;
+    p[0] = 0.9968742990270298;
 
     drone_FrenSer_acados_sim_update_params(capsule, p, np);
     free(p);

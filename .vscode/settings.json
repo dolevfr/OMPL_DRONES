@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.pddl": "plan",
         "cctype": "cpp",
         "clocale": "cpp",
         "cmath": "cpp",
@@ -71,6 +72,11 @@
         "valarray": "cpp",
         "variant": "cpp",
         "codecvt": "cpp",
-        "regex": "cpp"
-    }
+        "regex": "cpp",
+        "ranges": "cpp",
+        "nonlinearoptimization": "cpp",
+        "numericaldiff": "cpp"
+    },
+    "ros.distro": "humble",
+    "ROS2.distro": "humble"
 }

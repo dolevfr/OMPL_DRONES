@@ -122,9 +122,9 @@ int main()
     x_current[56] = 0.0;
 
   
-    x_current[0] = 60.9578;
-    x_current[1] = -33.5373;
-    x_current[2] = 19.3482;
+    x_current[0] = -10.061088;
+    x_current[1] = -40.057021;
+    x_current[2] = 20.05479;
     x_current[3] = 1;
     x_current[4] = 0;
     x_current[5] = 0;
@@ -203,7 +203,7 @@ int main()
     u0[15] = 0.0;
     // set parameters
     double p[NP];
-    p[0] = 0.3;
+    p[0] = 0.9968742990270298;
 
     drone_FrenSer_acados_sim_update_params(capsule, p, NP);
   
